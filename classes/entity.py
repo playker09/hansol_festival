@@ -1,22 +1,25 @@
 import pygame
 import math
 import random
+import os
 from scenes.map import MAP_WIDTH, MAP_HEIGHT  # 맵 크기 가져오기
 
 ENEMY_COLOR = (255, 50, 50)
-WALL_COLOR = (100, 100, 100)
 GREEN = (0, 255, 0)
 
 ENEMY_SIZE = 30
-WALL_SIZE = 40
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ASSET_IMAGE_DIR = os.path.join(BASE_DIR, "assets", "image")
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, x, y, size=30, speed=1.8, max_hp=2, damage=5, damage_cooldown=900):
         super().__init__()
-        self.image = pygame.Surface((size, size))
-        self.image.fill(ENEMY_COLOR)
+        self.original_image = pygame.image.load(os.path.join(ASSET_IMAGE_DIR, "enemy2.png")).convert_alpha()
+        self.original_image = pygame.transform.scale(self.original_image, (50, 50))
+        self.image = self.original_image.copy()
         self.rect = self.image.get_rect(topleft=(x, y))
+        self.size = size
         self.speed = speed
         self.max_hp = max_hp
         self.hp = max_hp
@@ -75,24 +78,17 @@ class Enemy(pygame.sprite.Sprite):
 
 class FastEnemy(Enemy):
     def __init__(self, x, y):
-        super().__init__(x, y, max_hp=2, speed=3, damage=3, damage_cooldown=500)
-        self.image.fill((255, 165, 0))  # 주황색
+        super().__init__(x, y, max_hp=2, size=30,speed=3, damage=3, damage_cooldown=500)
+        self.original_image = pygame.image.load(os.path.join(ASSET_IMAGE_DIR, "enemy1.png")).convert_alpha()
+        self.original_image = pygame.transform.scale(self.original_image, (50, 50))
+        self.image = self.original_image.copy()
 
 class TankEnemy(Enemy):
     def __init__(self, x, y):
         super().__init__(x, y, max_hp=10, speed=1, damage=7, damage_cooldown=1500, size=45)
-        self.image.fill((128, 0, 128))  # 보라색
-
-class Wall(pygame.sprite.Sprite):
-    def __init__(self, x, y):
-        super().__init__()
-        self.image = pygame.Surface((WALL_SIZE, WALL_SIZE))
-        self.image.fill(WALL_COLOR)
-        self.rect = self.image.get_rect(topleft=(x, y))
-
-    def draw(self, surface):  # 카메라 적용 필요 없으면 유지
-        surface.blit(self.image, self.rect)
-
+        self.original_image = pygame.image.load(os.path.join(ASSET_IMAGE_DIR, "enemy3.png")).convert_alpha()
+        self.original_image = pygame.transform.scale(self.original_image, (100, 100))
+        self.image = self.original_image.copy()
 
 class ExpOrb(pygame.sprite.Sprite):
     def __init__(self, x, y, value=1):
@@ -127,8 +123,9 @@ class ExpOrb(pygame.sprite.Sprite):
 class EMP_Tower(pygame.sprite.Sprite):
     def __init__(self, x, y,player = None ,survive_time=20 ):
         super().__init__()
-        self.image = pygame.Surface((100,100))
-        self.image.fill((0, 200, 255))  # 파란 EMP 타워
+        self.original_image = pygame.image.load(os.path.join(ASSET_IMAGE_DIR, "tower.png")).convert_alpha()
+        self.original_image = pygame.transform.scale(self.original_image, (100, 100))
+        self.image = self.original_image.copy()
         self.rect = self.image.get_rect(center=(x, y))
         
         self.activated = False   # 최종 발동 여부

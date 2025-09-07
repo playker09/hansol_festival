@@ -12,6 +12,12 @@ def draw_ammo(surface, font, player):
     text = font.render(f"Ammo: {weapon.ammo_in_mag}/{weapon.reserve_ammo}", True, (255, 255, 255))
     surface.blit(text, (10, 540)) 
 
+def draw_activated(surface, font, towers):
+    """현재 활성화된 타워 개수 표시"""
+    activated_count = sum(1 for t in towers if t.activated)
+    text = font.render(f"Activated Towers: {activated_count}", True, (255, 255, 255))
+    surface.blit(text, (555, 10))
+
 def draw_dash_indicator(surface, font, player):
     """대쉬 가능 표시"""
     if player.dash_cooldown <= 0:

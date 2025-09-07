@@ -12,7 +12,7 @@ from classes.entity import spawn_enemies, EMP_Tower, ExpOrb
 from classes.camera import Camera
 from scenes.map import draw_grid, MAP_WIDTH, MAP_HEIGHT
 from scenes.game_over import game_over_screen, game_success_screen
-from scenes.hud import draw_level, draw_ammo, draw_dash_indicator, draw_crosshair, draw_reload_circle, draw_emp_indicator
+from hud import draw_level, draw_ammo, draw_dash_indicator, draw_crosshair, draw_reload_circle, draw_emp_indicator, draw_activated
 from classes.upgrade import generate_upgrades, draw_upgrade_ui, COMMON_UPGRADES, WEAPON_SPECIFIC, ACCESSORIES
 from scenes.lobby import lobby_screen   
 
@@ -28,9 +28,15 @@ FPS = 60
 
 pygame.mixer.init()
 game_state = "lobby"  # play, upgrade, game_over, prepare, lobby
-bgm_path = os.path.join(os.path.dirname(__file__), "assets", "sfx", "bgm1.wav")
-ingame_bgm = pygame.mixer.Sound(bgm_path)
+# 사운드 파일 경로를 절대 경로로 지정
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ASSET_SFX_DIR = os.path.join(BASE_DIR, "assets", "sfx")
+ingame_bgm = pygame.mixer.Sound(os.path.join(ASSET_SFX_DIR, "bgm1.wav"))
 ingame_bgm.set_volume(0.3)
+# 프로젝트 루트 기준
+
+# 클릭 사운드 재생
+click_sfx_path = os.path.join(ASSET_SFX_DIR, "click.mp3")
 
 current_music_state = None  # 지금 어떤 상태에서 음악이 재생되고 있는지 기록
 
@@ -137,7 +143,7 @@ def main():
                             if chosen_upgrade not in player.upgrades[category]:
                                 player.upgrades[category].append(chosen_upgrade)
                             
-                            pygame.mixer.Sound("assets//sfx//click.mp3").play()
+                            pygame.mixer.Sound(click_sfx_path).play()
                             player.upgrading = False
                             game_state = "play"
 
@@ -147,12 +153,12 @@ def main():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
                     player.reload(current_time)
-
+            # 발사
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     mx, my = pygame.mouse.get_pos()
                     mode = player.current_weapon.mode
-                    if mode == "single"  or mode == "shotgun":
+                    if mode == "single" or mode == "burst" or mode == "shotgun":
                         player.shoot(mx, my, camera, bullets, current_time)
                     elif mode == "auto":
                         shooting = True
@@ -193,15 +199,15 @@ def main():
             # EMP 타워 업데이트
             for tower in towers:
                 tower.update(dt, player, enemies, all_sprites, exp_orbs, current_time, towers)
-            active_towers = sum(1 for t in towers if t.active)
-            if active_towers >= 3:
+
+            activated_towers = sum(1 for t in towers if t.activated)
+            if activated_towers >= 3:
                 action = game_success_screen(WIN, WIDTH, HEIGHT)
                 if action == "retry":
-                    break  # main 루프 재시작
+                    main()
                 else:
                     pygame.quit()
                     sys.exit()
-
                 
             spawn_timer = spawn_enemies(player, enemies, all_sprites, spawn_timer, current_time)
             
@@ -260,7 +266,7 @@ def main():
             if player.rect.colliderect(orb.rect):
                 player.gain_exp(orb.value)  # 경험치 획득
                 orb.kill()
-                s = pygame.mixer.Sound("assets//sfx//exp1.mp3")
+                s = pygame.mixer.Sound(os.path.join(ASSET_SFX_DIR, "exp1.mp3"))
                 s.set_volume(0.3)
                 s.play()
 
@@ -270,7 +276,7 @@ def main():
             game_state = "upgrade"
             player.upgrading = True
 
-            s = pygame.mixer.Sound("assets//sfx//level_up.mp3")
+            s = pygame.mixer.Sound(os.path.join(ASSET_SFX_DIR, "level_up.mp3"))
             s.set_volume(0.3)
             s.play()
 
@@ -299,11 +305,15 @@ def main():
         draw_crosshair(WIN, mx, my)
         draw_reload_circle(WIN, (mx, my), 20, player.current_weapon)
         draw_emp_indicator(WIN, player, towers)
+        draw_activated(WIN, font, towers)
 
         if game_state == "upgrade":
             btn_rects = draw_upgrade_ui(WIN, player, upgrade_choices)
 
         pygame.display.update()
 
+click_sound = pygame.mixer.Sound(os.path.join(ASSET_SFX_DIR, "click.mp3"))
+exp_sound = pygame.mixer.Sound(os.path.join(ASSET_SFX_DIR, "exp1.mp3"))
+levelup_sound = pygame.mixer.Sound(os.path.join(ASSET_SFX_DIR, "level_up.mp3"))
 if __name__ == "__main__":
-    main()  
+    main()

@@ -43,8 +43,8 @@ def game_over_screen(surface, player_level, width, height):
                     return "quit"
                 
 def game_success_screen(surface, width, height):
-    font = pygame.font.SysFont(None, 50)
-    small_font = pygame.font.SysFont(None, 36)
+    font = pygame.font.SysFont("malgungothic", 40)
+    small_font = pygame.font.SysFont("malgungothic", 18)
 
     # 게임 성공 메시지
     success_text = font.render("게임 성공!", True, (0, 255, 0))

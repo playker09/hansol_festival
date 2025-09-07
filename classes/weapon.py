@@ -1,17 +1,23 @@
-import math, random
+import math, random, os
 import pygame
 from classes.bullet import Bullet
 
 pygame.mixer.init()
 
+# 프로젝트 루트 기준 assets 경로
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ASSET_SFX_DIR = os.path.join(BASE_DIR, "assets", "sfx")
+
+
 class Weapon:
-    def __init__(self, name, fire_rate, spread, mode="single", pellet_count=5,
+    def __init__(self, name, fire_rate, spread, mode="single", burst_count=3, pellet_count=5,
                  mag_size=30, reserve_ammo=float("inf"), reload_time=1500, damage=1, pierce_level=0):
         self.name = name
         self.fire_rate = fire_rate
         self.spread = spread
         self.mode = mode
         self.last_shot = 0
+        self.burst_count = burst_count
         self.pellet_count = pellet_count
         self.damage = damage
         self.pierce_level = pierce_level
@@ -58,6 +64,10 @@ class Weapon:
         if self.mode == "single" or self.mode == "auto":
             self.spawn_bullet(px, py, dx, dy, bullets, damage=self.damage)
 
+        elif self.mode == "burst":
+            for _ in range(self.burst_count):
+                self.spawn_bullet(px, py, dx, dy, bullets, damage=self.damage)
+
         elif self.mode == "shotgun":
             for _ in range(self.pellet_count):
                 self.spawn_bullet(px, py, dx, dy, bullets, damage=self.damage)
@@ -71,10 +81,9 @@ class Weapon:
         self.is_reloading = True
         self.reload_start_time = current_time
 
-        reload_sfx = pygame.mixer.Sound("assets//sfx//smg_reload.wav")
+        reload_sfx_path = os.path.join(ASSET_SFX_DIR, "smg_reload.wav")
+        reload_sfx = pygame.mixer.Sound(reload_sfx_path)
         reload_sfx.set_volume(0.3)
-
-        # 채널에 올려서 재생 → 나중에 끊을 수 있음
         self.reload_channel.play(reload_sfx)
         
 
@@ -98,6 +107,7 @@ class Weapon:
         sdy = dx * sin_a + dy * cos_a
 
         bullets.add(Bullet(px, py, sdx, sdy, damage=damage, max_pierce=self.pierce_level))
-        shoot_sfx = pygame.mixer.Sound("assets//sfx//smg_shoot.wav")
+        shoot_sfx_path = os.path.join(ASSET_SFX_DIR, "smg_shoot.wav")
+        shoot_sfx = pygame.mixer.Sound(shoot_sfx_path)
         shoot_sfx.set_volume(0.2)
         shoot_sfx.play(maxtime=700)

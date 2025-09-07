@@ -1,12 +1,22 @@
 import pygame
+import os
 from scenes.map import MAP_WIDTH, MAP_HEIGHT
 from classes.weapon import Weapon
 # from scenes.upgrade import show_upgrade_screen
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ASSET_IMAGE_DIR = os.path.join(BASE_DIR, "assets", "image")
+ASSET_SFX_DIR = os.path.join(BASE_DIR, "assets", "sfx")
+
+player_img = pygame.image.load(os.path.join(ASSET_IMAGE_DIR, "player.png"))
+
+# 사운드 로드 예시
+smg_shoot_sound = pygame.mixer.Sound(os.path.join(ASSET_SFX_DIR, "smg_shoot.wav"))
+
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        self.original_image = pygame.image.load("assets//image//player.png").convert_alpha()
+        self.original_image = pygame.image.load(os.path.join(ASSET_IMAGE_DIR, "player.png")).convert_alpha()
         self.original_image = pygame.transform.scale(self.original_image, (34, 66))
         self.image = self.original_image.copy()
         self.rect = self.image.get_rect(center=(MAP_WIDTH/2, MAP_HEIGHT/2))
@@ -25,10 +35,10 @@ class Player(pygame.sprite.Sprite):
 
         # 주무기 & 무기 선택
         self.weapons = {
-            "dmr": Weapon("DMR", fire_rate=130, spread=1, mode="single", mag_size=25, reload_time=900, damage=5,pierce_level=5),
-            "smg": Weapon("SMG", fire_rate=90, spread=5, mode="auto", mag_size=30,reload_time=1200,damage=2,pierce_level=2),
-            "rifle": Weapon("Rifle", fire_rate=120, spread=3, mode="auto", mag_size=30,reload_time= 1600, damage=4,pierce_level=3),
-            "shotgun": Weapon("Shotgun", fire_rate=700, spread=15, mode="shotgun", mag_size=15,pellet_count=10,damage=2,pierce_level=1)
+            "dmr": Weapon("DMR", fire_rate=130, spread=1, mode="single", mag_size=25, reload_time=900, damage=5),
+            "smg": Weapon("SMG", fire_rate=90, spread=5, mode="auto", reload_time=1200,damage=2),
+            "rifle": Weapon("Rifle", fire_rate=120, spread=3, mode="auto", reload_time= 1600, damage=4),
+            "shotgun": Weapon("Shotgun", fire_rate=700, spread=15, mode="shotgun", pellet_count=10,damage=2)
         }
         self.primary_weapon = None
         self.current_weapon = None
@@ -58,7 +68,10 @@ class Player(pygame.sprite.Sprite):
     def choose_primary_weapon(self, surface, WIDTH, HEIGHT):
         font_title = pygame.font.SysFont("malgungothic", 36, bold=True)
         font_stats = pygame.font.SysFont("malgungothic", 20)
+        font_weapon = pygame.font.SysFont("malgungothic", 28, bold=True)
+
         weapons_list = list(self.weapons.values())
+        weapon_names = ["DMR", "SMG", "Rifle", "Shotgun"]  # 무기 이름 리스트
         selected = None
 
         slot_width = 150
@@ -92,9 +105,10 @@ class Player(pygame.sprite.Sprite):
 
                 pygame.draw.rect(surface, border_color, rect, 2, border_radius=10)
 
-                # 총 이미지
-                img = pygame.transform.scale(w.image if hasattr(w, "image") else pygame.Surface((80,50)), (80,50))
-                surface.blit(img, (rect.centerx - 40, rect.y + 15))
+                # 무기 이름 표시
+                weapon_name = weapon_names[i] if i < len(weapon_names) else "Weapon"
+                text_surf = font_weapon.render(weapon_name, True, (255, 255, 255))
+                surface.blit(text_surf, (rect.centerx - text_surf.get_width()//2, rect.y + 20))
 
                 # 스탯
                 stats_y = rect.y + 90
@@ -123,6 +137,7 @@ class Player(pygame.sprite.Sprite):
 
         self.primary_weapon = selected
         self.current_weapon = selected
+
 
 
 

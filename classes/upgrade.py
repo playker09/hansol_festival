@@ -23,6 +23,7 @@ class Upgrade:
         # 추가 효과
         if self.level in self.extra_effects:
             self.extra_effects[self.level](player)
+            print(f"[추가 효과 발동] {self.name} Lv.{self.level}")
 
 
 # ---------------- 공용 업그레이드 ----------------
@@ -32,12 +33,11 @@ COMMON_UPGRADES = [
         effect=lambda p, lvl: setattr(p.current_weapon, "fire_rate", max(50, p.current_weapon.fire_rate - 10)),
         extra_effects={
             3: lambda p: setattr(p.current_weapon, "spread", max(1, p.current_weapon.spread - 1)),
-            5: lambda p: setattr(p.current_weapon, "crit_chance", getattr(p.current_weapon, "crit_chance", 0.1) + 0.2),
         },
     ),
     Upgrade(
         "대용량 탄창", "탄약 수가 늘어납니다.",
-        effect=lambda p, lvl: setattr(p.current_weapon, "mag_size", p.current_weapon.mag_size + 20)
+        effect=lambda p, lvl: setattr(p.current_weapon, "mag_size", p.current_weapon.mag_size + 3)
     ),
     Upgrade(
         "철갑탄", "총알이 적을 관통합니다.",
@@ -59,7 +59,7 @@ WEAPON_SPECIFIC = {
     "DMR": [
         Upgrade(
             "DMR - 예리한 손놀림", "관통력이 증가합니다.",
-            effect=lambda p, lvl: setattr(p.current_weapon, "pierce_level", getattr(p.current_weapon, "pierce_level", 1) + 1 * lvl)
+            effect=lambda p, lvl: setattr(p.current_weapon, "pierce_level", getattr(p.current_weapon, "pierce_level", 1) + 1)
         )
     ],
     "SMG": [
@@ -70,8 +70,8 @@ WEAPON_SPECIFIC = {
     ],
     "Rifle": [
         Upgrade(
-            "돌격 소총 - 불법 개조", "데미지가 추가됩니다.",
-            effect=lambda p, lvl: setattr(p.current_weapon, "damage", getattr(p.current_weapon, "damage", 1) + 1 * lvl)
+            "돌격 소총 - 불법 개조", "데미지가 증가합니다.",
+            effect=lambda p, lvl: setattr(p.current_weapon, "damage", getattr(p.current_weapon, "damage", 1) + 1)
         )
     ],
     "Shotgun": [
@@ -85,7 +85,7 @@ WEAPON_SPECIFIC = {
 # ---------------- 악세사리 ----------------
 ACCESSORIES = [
     Upgrade(
-        "응급처치 키트", "체력이 즉시 회복됩니다.",
+        "응급치료 키트", "체력이 즉시 회복됩니다.",
         effect=lambda p, lvl: setattr(p, "hp", min(p.max_hp, p.hp + 40))
     ),
     Upgrade(
@@ -101,11 +101,13 @@ ACCESSORIES = [
         effect=lambda p, lvl: setattr(p, "speed", p.speed + 0.2)
     ),
     Upgrade(
-        "체력 증가", "최대 체력이 증가합니다.",
+        "끈기", "최대 체력이 증가합니다.",
         effect=lambda p, lvl: setattr(p, "max_hp", p.max_hp + 20),
+        extra_effects={
+            3: lambda p: setattr(p, "hp_regen", getattr(p, "hp_regen", 0) + 1)
+        }
     ),
 ]
-
 # ---------------- 업그레이드 후보 생성 ----------------
 def generate_upgrades(player):
     upgrades = []
