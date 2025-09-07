@@ -12,7 +12,7 @@ WALL_SIZE = 40
 
 
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, x, y, size=30, speed=2.5, max_hp=2, damage=5, damage_cooldown=900):
+    def __init__(self, x, y, size=30, speed=1.8, max_hp=2, damage=5, damage_cooldown=900):
         super().__init__()
         self.image = pygame.Surface((size, size))
         self.image.fill(ENEMY_COLOR)
@@ -23,8 +23,17 @@ class Enemy(pygame.sprite.Sprite):
         self.damage = damage
         self.damage_cooldown = damage_cooldown  # ms
         self.last_hit_time = 0  # 플레이어를 마지막으로 공격한 시간
+        self.knockback_x = 0
+        self.knockback_y = 0
+        self.knockback_decay = 0.85  # 매 프레임마다 줄어드는 비율
 
     def move(self, player_rect, enemies):
+        self.rect.x += self.knockback_x
+        self.rect.y += self.knockback_y
+        # 매 프레임마다 줄어듦 (감속)
+        self.knockback_x *= self.knockback_decay
+        self.knockback_y *= self.knockback_decay
+        
         dx = player_rect.centerx - self.rect.centerx
         dy = player_rect.centery - self.rect.centery
         distance = math.hypot(dx, dy)
@@ -66,12 +75,12 @@ class Enemy(pygame.sprite.Sprite):
 
 class FastEnemy(Enemy):
     def __init__(self, x, y):
-        super().__init__(x, y, max_hp=2, speed=3.2, damage=3, damage_cooldown=500)
+        super().__init__(x, y, max_hp=2, speed=3, damage=3, damage_cooldown=500)
         self.image.fill((255, 165, 0))  # 주황색
 
 class TankEnemy(Enemy):
     def __init__(self, x, y):
-        super().__init__(x, y, max_hp=10, speed=2, damage=7, damage_cooldown=1500, size=45)
+        super().__init__(x, y, max_hp=10, speed=1, damage=7, damage_cooldown=1500, size=45)
         self.image.fill((128, 0, 128))  # 보라색
 
 class Wall(pygame.sprite.Sprite):
@@ -91,13 +100,32 @@ class ExpOrb(pygame.sprite.Sprite):
         self.image = pygame.Surface((15, 15), pygame.SRCALPHA)
         pygame.draw.ellipse(self.image, (0, 255, 0), (0, 0, 15, 15))
         self.rect = self.image.get_rect(center=(x, y))
-        self.value = value 
+        self.value = value
+        self.absorbing = False
+        self.target = None
+        self.absorb_speed = 0
+
+    def update(self):
+        if self.absorbing and self.target:
+            px, py = self.target.rect.center
+            ox, oy = self.rect.center   #  중심 좌표 사용
+            dx, dy = px - ox, py - oy
+            dist = math.hypot(dx, dy)   #  올바른 거리 계산
+
+            if dist < 10:
+                self.target.gain_exp(self.value)
+                self.kill()
+            else:
+                self.rect.x += dx / dist * self.absorb_speed
+                self.rect.y += dy / dist * self.absorb_speed
+
+
 
     def draw(self, surface, camera):
         surface.blit(self.image, camera.apply(self.rect))
 
 class EMP_Tower(pygame.sprite.Sprite):
-    def __init__(self, x, y, survive_time=30):
+    def __init__(self, x, y,player = None ,survive_time=20 ):
         super().__init__()
         self.image = pygame.Surface((100,100))
         self.image.fill((0, 200, 255))  # 파란 EMP 타워
@@ -108,6 +136,7 @@ class EMP_Tower(pygame.sprite.Sprite):
         self.survive_time = survive_time  # 버텨야 하는 시간(초)
         self.timer = 0           # 남은 시간
         self.font = pygame.font.SysFont(None, 32)
+        self.player = player
 
         # 타워마다 개별 스폰 타이머 관리
         self.spawn_timer = 0  
@@ -133,28 +162,38 @@ class EMP_Tower(pygame.sprite.Sprite):
                 all_sprites.add(orb)
 
                 enemy.kill()
+            absorb_radius = 800
+            absorb_speed = 15
+            for orb in exp_orbs:
+                dx = orb.rect.centerx - self.rect.centerx
+                dy = orb.rect.centery - self.rect.centery
+                dist = (dx*dx + dy*dy) ** 0.5
+                if dist < absorb_radius:
+                    orb.absorbing = True
+                    orb.target = self.player
+                    orb.absorb_speed = absorb_speed
 
-            print("EMP Tower Activated! All enemies destroyed!")
-
-    def update(self, dt, player, enemies, all_sprites, exp_orbs, current_time):
+    def update(self, dt, player, enemies, all_sprites, exp_orbs, current_time,towers):
         """타워 로직"""
         keys = pygame.key.get_pressed()
         if not self.active and not self.activated:
             if self.rect.colliderect(player.rect) and keys[pygame.K_e]:
                 self.start()
-
+    
         # 버티는 중이면 타이머 감소 + 적 스폰
         if self.active:
             self.timer -= dt
+
+            active_towers = sum(1 for tower in towers if tower.active or tower.activated)
+
             self.spawn_timer = spawn_enemies(
                 player, enemies, all_sprites,
                 self.spawn_timer, current_time,
                 base_interval=120,
-                base_num=25,
+                base_num=7,
                 spawn_radius=1000,
-                enemy_speed=2,
                 difficulty_scale=False,
-                extra_multiplier=2
+                extra_multiplier=1 + active_towers
             )
             if self.timer <= 0:
                 self.activate(enemies, exp_orbs, all_sprites)
@@ -192,7 +231,7 @@ def spawn_enemies(
         if spawn_timer > base_interval:  
             # 난이도 스케일 (시간에 따라 강해짐)
             elapsed_sec = current_time // 1000
-            level_scale = (1 + elapsed_sec // 30) if difficulty_scale else 1
+            level_scale = (1 + elapsed_sec // 90) if difficulty_scale else 1
 
             # 이번에 스폰할 적 수
             num_to_spawn = (base_num + level_scale) * extra_multiplier
@@ -212,7 +251,7 @@ def spawn_enemies(
                     # 새 적 생성
                     enemy_class = random.choices(
                         [Enemy, FastEnemy, TankEnemy],
-                        weights=[0.7, 0.29, 0.01],  # 등장 확률 조정
+                        weights=[0.85, 0.14, 0.01],  # 등장 확률 조정
                         k=1
                     )[0]
 

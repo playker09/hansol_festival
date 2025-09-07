@@ -25,10 +25,10 @@ class Player(pygame.sprite.Sprite):
 
         # 주무기 & 무기 선택
         self.weapons = {
-            "dmr": Weapon("DMR", fire_rate=130, spread=1, mode="single", mag_size=25, reload_time=900, damage=3.5),
-            "smg": Weapon("SMG", fire_rate=90, spread=5, mode="auto", reload_time=1200),
-            "rifle": Weapon("Rifle", fire_rate=120, spread=3, mode="auto", reload_time= 1600, damage=2.5),
-            "shotgun": Weapon("Shotgun", fire_rate=700, spread=15, mode="shotgun", pellet_count=10,damage=1.5)
+            "dmr": Weapon("DMR", fire_rate=130, spread=1, mode="single", mag_size=25, reload_time=900, damage=5),
+            "smg": Weapon("SMG", fire_rate=90, spread=5, mode="auto", reload_time=1200,damage=2),
+            "rifle": Weapon("Rifle", fire_rate=120, spread=3, mode="auto", reload_time= 1600, damage=4),
+            "shotgun": Weapon("Shotgun", fire_rate=700, spread=15, mode="shotgun", pellet_count=10,damage=2)
         }
         self.primary_weapon = None
         self.current_weapon = None
@@ -57,33 +57,80 @@ class Player(pygame.sprite.Sprite):
         self.dash_cooldown = 0
         self.is_invincible = False
 
+        # 레벨업 큐 시스템
+        self.level_up_queue = 0
+        self.upgrading = False
+
     def choose_primary_weapon(self, surface, WIDTH, HEIGHT):
-        # 주무기 선택 화면
-        font = pygame.font.SysFont("malgungothic", 28)
+        font_title = pygame.font.SysFont("malgungothic", 36, bold=True)
+        font_stats = pygame.font.SysFont("malgungothic", 20)
         weapons_list = list(self.weapons.values())
         selected = None
+
+        slot_width = 150
+        slot_height = 250
+        margin = 20
+
         while selected is None:
             surface.fill((0,0,0))
+
+            # 제목
+            title_surf = font_title.render("Select your weapon", True, (255, 255, 255))
+            surface.blit(title_surf, (WIDTH//2 - title_surf.get_width()//2, 50))
+
+            start_x = (WIDTH - (slot_width + margin) * len(weapons_list) + margin) // 2
+            y = HEIGHT//2 - slot_height//2
+
+            slots = []
+            mx, my = pygame.mouse.get_pos()
             for i, w in enumerate(weapons_list):
-                rect = pygame.Rect(WIDTH//2 - 150, HEIGHT//2 - 100 + i*100, 300, 80)
-                pygame.draw.rect(surface, (50,50,50), rect, border_radius=15)
-                pygame.draw.rect(surface, (200,200,200), rect, 2, border_radius=15)
-                text = font.render(w.name, True, (255,255,255))
-                surface.blit(text, (rect.x + 20, rect.y + 25))
+                x = start_x + i * (slot_width + margin)
+                rect = pygame.Rect(x, y, slot_width, slot_height)
+                slots.append((rect, w))
+
+                # 마우스 오버 강조
+                if rect.collidepoint((mx,my)):
+                    pygame.draw.rect(surface, (70,70,70), rect, border_radius=10)  # 배경 밝게
+                    border_color = (255, 255, 0)
+                else:
+                    pygame.draw.rect(surface, (50,50,50), rect, border_radius=10)
+                    border_color = (200,200,200)
+
+                pygame.draw.rect(surface, border_color, rect, 2, border_radius=10)
+
+                # 총 이미지
+                img = pygame.transform.scale(w.image if hasattr(w, "image") else pygame.Surface((80,50)), (80,50))
+                surface.blit(img, (rect.centerx - 40, rect.y + 15))
+
+                # 스탯
+                stats_y = rect.y + 90
+                stats = [
+                    f"DMG: {w.damage}",
+                    f"Pierce: {w.pierce_level}",
+                    f"Reload: {w.reload_time/1000:.1f}s",
+                    f"Spread: {w.spread}"
+                ]
+                for s in stats:
+                    stat_surf = font_stats.render(s, True, (255,255,255))
+                    surface.blit(stat_surf, (rect.x + 10, stats_y))
+                    stats_y += 25
 
             pygame.display.update()
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     exit()
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    mx, my = pygame.mouse.get_pos()
-                    for i, w in enumerate(weapons_list):
-                        rect = pygame.Rect(WIDTH//2 - 150, HEIGHT//2 - 100 + i*100, 300, 80)
+                    for rect, w in slots:
                         if rect.collidepoint((mx,my)):
                             selected = w
+                            break
+
         self.primary_weapon = selected
         self.current_weapon = selected
+
+
 
     def move(self, keys):
         if self.is_dashing:
@@ -137,10 +184,11 @@ class Player(pygame.sprite.Sprite):
     def gain_exp(self, amount):
         self.exp += amount
         leveled_up = False
-        if self.exp >= self.exp_to_next_level:
-            self.level += 1
+        while self.exp >= self.exp_to_next_level:
             self.exp -= self.exp_to_next_level
+            self.level += 1
             self.exp_to_next_level += 5 * self.level
+            self.level_up_queue += 1   # 큐에 쌓기
             leveled_up = True
         return leveled_up
 

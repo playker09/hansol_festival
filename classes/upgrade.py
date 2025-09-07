@@ -37,25 +37,27 @@ COMMON_UPGRADES = [
         },
     ),
     Upgrade(
-        "체력 증가", "최대 체력이 증가합니다.",
-        effect=lambda p, lvl: setattr(p, "max_hp", p.max_hp + 20),
-        extra_effects={
-            3: lambda p: setattr(p, "hp_regen", getattr(p, "hp_regen", 0) + 1)
-        }
-    ),
-    Upgrade(
         "대용량 탄창", "탄약 수가 늘어납니다.",
         effect=lambda p, lvl: setattr(p.current_weapon, "mag_size", p.current_weapon.mag_size + 3)
     ),
     Upgrade(
-        "이동 속도 증가", "이동 속도가 증가합니다.",
-        effect=lambda p, lvl: setattr(p, "speed", p.speed + 0.2)
-    ),
-    Upgrade(
-        "관통 공격", "총알이 적을 관통합니다.",
+        "철갑탄", "총알이 적을 관통합니다.",
         effect=lambda p, lvl: setattr(p.current_weapon, "pierce_level", lvl)
     ),
+    Upgrade(
+        "치명타 강화", "치명타 피해가 증가합니다.",
+        effect=lambda p, lvl: setattr(p.current_weapon, "crit_multiplier", getattr(p.current_weapon, "crit_multiplier", 1.5) + 0.5)
+    ),
+    Upgrade(
+        "고위력탄", "총알의 기본 피해가 크게 증가합니다.",
+        effect=lambda p, lvl: setattr(p.current_weapon, "damage", getattr(p.current_weapon, "damage", 1) + 1 * lvl),
+        extra_effects={
+            3: lambda p: setattr(p.current_weapon, "damage", getattr(p.current_weapon, "damage", 1) + 1),
+            5: lambda p: setattr(p.current_weapon, "damage", getattr(p.current_weapon, "damage", 1) + 2),
+        },
+    ),
 ]
+
 
 # ---------------- 무기별 전용 업그레이드 ----------------
 WEAPON_SPECIFIC = {
@@ -112,6 +114,17 @@ ACCESSORIES = [
         "베테랑", "추가 경험치 획득",
         effect=lambda p, lvl: setattr(p, "exp", p.exp + 5)
     ),
+    Upgrade(
+        "이동 속도 증가", "이동 속도가 증가합니다.",
+        effect=lambda p, lvl: setattr(p, "speed", p.speed + 0.2)
+    ),
+    Upgrade(
+        "체력 증가", "최대 체력이 증가합니다.",
+        effect=lambda p, lvl: setattr(p, "max_hp", p.max_hp + 20),
+        extra_effects={
+            3: lambda p: setattr(p, "hp_regen", getattr(p, "hp_regen", 0) + 1)
+        }
+    ),
 ]
 
 # ---------------- 보조 무기 해제 & 강화 ----------------
@@ -139,7 +152,6 @@ def generate_upgrades(player):
         upgrades.extend(ACCESSORIES)
     return random.sample(upgrades, min(3, len(upgrades)))
 
-# ---------------- UI 그리기 ----------------
 def draw_upgrade_ui(surface, player, choices):
     font = pygame.font.SysFont("malgungothic", 24)
     small_font = pygame.font.SysFont("malgungothic", 18)
@@ -152,13 +164,23 @@ def draw_upgrade_ui(surface, player, choices):
     surface.blit(overlay, rect.topleft)
 
     btn_rects = []
+    mx, my = pygame.mouse.get_pos()
+
     for i, up in enumerate(choices):
         btn_rect = pygame.Rect(rect.x + 50, rect.y + 40 + i*100, ui_width-100, 80)
         btn_rects.append(btn_rect)
 
-        # 버튼 배경
-        pygame.draw.rect(surface, (100, 100, 100), btn_rect, border_radius=10)
-        pygame.draw.rect(surface, (200, 200, 200), btn_rect, 2, border_radius=10)
+        # 마우스 오버 여부 확인
+        if btn_rect.collidepoint(mx, my):
+            bg_color = (150, 150, 50)  # 강조된 배경
+            border_color = (255, 255, 0)
+        else:
+            bg_color = (100, 100, 100)
+            border_color = (200, 200, 200)
+
+        # 버튼 배경 & 테두리
+        pygame.draw.rect(surface, bg_color, btn_rect, border_radius=10)
+        pygame.draw.rect(surface, border_color, btn_rect, 2, border_radius=10)
 
         # 레벨 가져오기
         level = up.level
@@ -168,7 +190,7 @@ def draw_upgrade_ui(surface, player, choices):
         surface.blit(text, (btn_rect.x + 10, btn_rect.y + 10))
 
         # 설명
-        desc = small_font.render(up.desc, True, (200, 200, 200))
+        desc = small_font.render(up.desc, True, (220, 220, 220))
         surface.blit(desc, (btn_rect.x + 10, btn_rect.y + 45))
 
     return btn_rects
