@@ -20,7 +20,7 @@ from scenes.lobby import lobby_screen
 pygame.init()
 WIDTH, HEIGHT = 800, 600
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("슈팅게임 프로토타입")
+pygame.display.set_caption("AREA-X")
 
 # FPS
 clock = pygame.time.Clock()
