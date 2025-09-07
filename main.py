@@ -8,12 +8,12 @@ import random
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from classes.player import Player
-from classes.entity import spawn_enemies, EMP_Tower, ExpOrb, Wall
+from classes.entity import spawn_enemies, EMP_Tower, ExpOrb
 from classes.camera import Camera
 from scenes.map import draw_grid, MAP_WIDTH, MAP_HEIGHT
-from scenes.game_over import game_over_screen
-from hud import draw_level, draw_ammo, draw_dash_indicator, draw_crosshair, draw_reload_circle, draw_emp_indicator
-from classes.upgrade import generate_upgrades, draw_upgrade_ui, COMMON_UPGRADES, WEAPON_SPECIFIC, SECONDARIES, ACCESSORIES
+from scenes.game_over import game_over_screen, game_success_screen
+from scenes.hud import draw_level, draw_ammo, draw_dash_indicator, draw_crosshair, draw_reload_circle, draw_emp_indicator
+from classes.upgrade import generate_upgrades, draw_upgrade_ui, COMMON_UPGRADES, WEAPON_SPECIFIC, ACCESSORIES
 from scenes.lobby import lobby_screen   
 
 # 초기화
@@ -28,7 +28,8 @@ FPS = 60
 
 pygame.mixer.init()
 game_state = "lobby"  # play, upgrade, game_over, prepare, lobby
-ingame_bgm = pygame.mixer.Sound("assets//sfx//bgm1.wav")
+bgm_path = os.path.join(os.path.dirname(__file__), "assets", "sfx", "bgm1.wav")
+ingame_bgm = pygame.mixer.Sound(bgm_path)
 ingame_bgm.set_volume(0.3)
 
 current_music_state = None  # 지금 어떤 상태에서 음악이 재생되고 있는지 기록
@@ -132,8 +133,7 @@ def main():
                             chosen_upgrade.apply(player)
                             
                             # 카테고리 등록
-                            category = "weapon" if chosen_upgrade in COMMON_UPGRADES + WEAPON_SPECIFIC.get(player.primary_weapon.name, []) else \
-                                    "secondary" if chosen_upgrade in SECONDARIES else "accessory"
+                            category = "weapon" if chosen_upgrade in COMMON_UPGRADES + WEAPON_SPECIFIC.get(player.primary_weapon.name, []) else "accessory"
                             if chosen_upgrade not in player.upgrades[category]:
                                 player.upgrades[category].append(chosen_upgrade)
                             
@@ -148,15 +148,11 @@ def main():
                 if event.key == pygame.K_r:
                     player.reload(current_time)
 
-                # # 울타리 설치
-                # if event.key == pygame.K_SPACE:
-                #     walls.add(Wall(player.rect.centerx, player.rect.top - WALL_SIZE))
-
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     mx, my = pygame.mouse.get_pos()
                     mode = player.current_weapon.mode
-                    if mode == "single" or mode == "burst" or mode == "shotgun":
+                    if mode == "single"  or mode == "shotgun":
                         player.shoot(mx, my, camera, bullets, current_time)
                     elif mode == "auto":
                         shooting = True
@@ -197,6 +193,15 @@ def main():
             # EMP 타워 업데이트
             for tower in towers:
                 tower.update(dt, player, enemies, all_sprites, exp_orbs, current_time, towers)
+            active_towers = sum(1 for t in towers if t.active)
+            if active_towers >= 3:
+                action = game_success_screen(WIN, WIDTH, HEIGHT)
+                if action == "retry":
+                    break  # main 루프 재시작
+                else:
+                    pygame.quit()
+                    sys.exit()
+
                 
             spawn_timer = spawn_enemies(player, enemies, all_sprites, spawn_timer, current_time)
             
@@ -250,7 +255,6 @@ def main():
         for exp in exp_orbs:
             exp.update()
 
-        # 경험치 오브 흡수
         # 경험치 오브 흡수
         for orb in exp_orbs.copy():
             if player.rect.colliderect(orb.rect):

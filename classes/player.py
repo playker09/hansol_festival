@@ -25,10 +25,10 @@ class Player(pygame.sprite.Sprite):
 
         # 주무기 & 무기 선택
         self.weapons = {
-            "dmr": Weapon("DMR", fire_rate=130, spread=1, mode="single", mag_size=25, reload_time=900, damage=5),
-            "smg": Weapon("SMG", fire_rate=90, spread=5, mode="auto", reload_time=1200,damage=2),
-            "rifle": Weapon("Rifle", fire_rate=120, spread=3, mode="auto", reload_time= 1600, damage=4),
-            "shotgun": Weapon("Shotgun", fire_rate=700, spread=15, mode="shotgun", pellet_count=10,damage=2)
+            "dmr": Weapon("DMR", fire_rate=130, spread=1, mode="single", mag_size=25, reload_time=900, damage=5,pierce_level=5),
+            "smg": Weapon("SMG", fire_rate=90, spread=5, mode="auto", mag_size=30,reload_time=1200,damage=2,pierce_level=2),
+            "rifle": Weapon("Rifle", fire_rate=120, spread=3, mode="auto", mag_size=30,reload_time= 1600, damage=4,pierce_level=3),
+            "shotgun": Weapon("Shotgun", fire_rate=700, spread=15, mode="shotgun", mag_size=15,pellet_count=10,damage=2,pierce_level=1)
         }
         self.primary_weapon = None
         self.current_weapon = None
@@ -36,16 +36,10 @@ class Player(pygame.sprite.Sprite):
         # 업그레이드 관리
         self.upgrades = {
             "weapon": [],      # Upgrade 객체 리스트
-            "secondary": [],
             "accessory": []
         }
         self.max_weapon_upgrades = 3
-        self.max_secondary_upgrades = 3
         self.max_accessory = 4
-
-        # 보조 무기 잠금 상태
-        self.drone_unlocked = False
-        self.grenade_unlocked = False
 
         # 대쉬 관련
         self.is_dashing = False

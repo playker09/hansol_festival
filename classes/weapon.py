@@ -5,14 +5,13 @@ from classes.bullet import Bullet
 pygame.mixer.init()
 
 class Weapon:
-    def __init__(self, name, fire_rate, spread, mode="single", burst_count=3, pellet_count=5,
+    def __init__(self, name, fire_rate, spread, mode="single", pellet_count=5,
                  mag_size=30, reserve_ammo=float("inf"), reload_time=1500, damage=1, pierce_level=0):
         self.name = name
         self.fire_rate = fire_rate
         self.spread = spread
         self.mode = mode
         self.last_shot = 0
-        self.burst_count = burst_count
         self.pellet_count = pellet_count
         self.damage = damage
         self.pierce_level = pierce_level
@@ -58,10 +57,6 @@ class Weapon:
 
         if self.mode == "single" or self.mode == "auto":
             self.spawn_bullet(px, py, dx, dy, bullets, damage=self.damage)
-
-        elif self.mode == "burst":
-            for _ in range(self.burst_count):
-                self.spawn_bullet(px, py, dx, dy, bullets, damage=self.damage)
 
         elif self.mode == "shotgun":
             for _ in range(self.pellet_count):
