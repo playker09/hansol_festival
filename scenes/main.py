@@ -18,7 +18,7 @@ from scenes.lobby import lobby_screen
 
 # 초기화
 pygame.init()
-WIDTH, HEIGHT = 800, 600
+WIDTH, HEIGHT = 1960, 1080
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("AREA-X")
 
@@ -39,6 +39,20 @@ ingame_bgm.set_volume(0.3)
 click_sfx_path = os.path.join(ASSET_SFX_DIR, "click.mp3")
 
 current_music_state = None  # 지금 어떤 상태에서 음악이 재생되고 있는지 기록
+
+def safe_font(size=16, bold=False):
+    pygame.font.init()
+    # 한국어 표시 가능한 폰트 우선 탐색
+    candidates = [
+        "Malgun Gothic", "NanumGothic", "Noto Sans CJK KR", "Apple SD Gothic Neo",
+        "맑은 고딕", "나눔고딕", "Noto Sans KR", None  # None -> 기본 시스템 폰트
+    ]
+    for name in candidates:
+        try:
+            return pygame.font.SysFont(name, size, bold=bold)
+        except:
+            continue
+    return pygame.font.SysFont(None, size, bold=bold)
 
 def update_music(game_state):
     global current_music_state
@@ -102,7 +116,7 @@ def main():
     all_sprites.add(towers)
     all_sprites.add(player)
 
-    spawn_timer = 300        
+    spawn_timer = 1000         
     camera = Camera(WIDTH, HEIGHT)  # 카메라 초기화
     last_hit_time = 0  # 마지막으로 플레이어가 적에게 맞은 시간
     shooting = False
@@ -297,10 +311,12 @@ def main():
 
         # 플레이어 HP 바 및 HUD
         player.draw_hp_bar(WIN, camera)
-        font = pygame.font.SysFont(None, 36)
+        font = safe_font(size=48,bold=True)
+        large_font = safe_font(size=50,bold=True)
+        small_font = safe_font(size=36,bold=True)
         draw_level(WIN, font, player)
-        draw_ammo(WIN, font, player)
-        draw_dash_indicator(WIN, font, player)
+        draw_ammo(WIN, large_font, player)
+        draw_dash_indicator(WIN, small_font, player)
         mx, my = pygame.mouse.get_pos()
         draw_crosshair(WIN, mx, my)
         draw_reload_circle(WIN, (mx, my), 20, player.current_weapon)

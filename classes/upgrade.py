@@ -2,6 +2,20 @@ import pygame
 import random
 from classes.weapon import Weapon
 
+def safe_font(size=16):
+    pygame.font.init()
+    # 한국어 표시 가능한 폰트 우선 탐색
+    candidates = [
+        "Malgun Gothic", "NanumGothic", "Noto Sans CJK KR", "Apple SD Gothic Neo",
+        "맑은 고딕", "나눔고딕", "Noto Sans KR", None  # None -> 기본 시스템 폰트
+    ]
+    for name in candidates:
+        try:
+            return pygame.font.SysFont(name, size)
+        except:
+            continue
+    return pygame.font.SysFont(None, size)
+
 # ---------------- Upgrade 클래스 ----------------
 class Upgrade:
     def __init__(self, name, desc, effect, extra_effects=None, max_level=5):
@@ -10,7 +24,11 @@ class Upgrade:
         self.effect = effect                # (player, level) -> 기본 효과
         self.extra_effects = extra_effects or {}  # {레벨: 함수(player)}
         self.level = 0                      # 현재 레벨
-        self.max_level = max_level          # 최대 레벨 (None이면 무제한)
+        self.max_level = max_level
+        # UI with safe font
+        self.font = safe_font(size=24)
+        self.big_font = safe_font(size=48) 
+        self.small_font = safe_font(size=16)          # 최대 레벨 (None이면 무제한)
 
     def apply(self, player):
         if self.max_level is not None and self.level >= self.max_level:
@@ -119,8 +137,8 @@ def generate_upgrades(player):
     return random.sample(upgrades, min(3, len(upgrades)))
 
 def draw_upgrade_ui(surface, player, choices):
-    font = pygame.font.SysFont("malgungothic", 24)
-    small_font = pygame.font.SysFont("malgungothic", 18)
+    font = safe_font(size=24)
+    small_font = safe_font(size=16)
 
     ui_width, ui_height = 500, 360
     overlay = pygame.Surface((ui_width, ui_height))

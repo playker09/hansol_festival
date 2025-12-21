@@ -38,7 +38,7 @@ class Player(pygame.sprite.Sprite):
             "dmr": Weapon("DMR", fire_rate=130, spread=1, mode="single", mag_size=25, reload_time=900, damage=5),
             "smg": Weapon("SMG", fire_rate=90, spread=5, mode="auto", reload_time=1200,damage=2),
             "rifle": Weapon("Rifle", fire_rate=120, spread=3, mode="auto", reload_time= 1600, damage=4),
-            "shotgun": Weapon("Shotgun", fire_rate=700, spread=15, mode="shotgun", pellet_count=10,damage=2)
+            "shotgun": Weapon("Shotgun", fire_rate=700, spread=15, mode="shotgun", pellet_count=7,damage=2)
         }
         self.primary_weapon = None
         self.current_weapon = None
@@ -113,10 +113,10 @@ class Player(pygame.sprite.Sprite):
                 # 스탯
                 stats_y = rect.y + 90
                 stats = [
-                    f"DMG: {w.damage}",
-                    f"Pierce: {w.pierce_level}",
-                    f"Reload: {w.reload_time/1000:.1f}s",
-                    f"Spread: {w.spread}"
+                    f"데미지: {w.damage}",
+                    f"관통력: {w.pierce_level}",
+                    f"재장전: {w.reload_time/1000:.1f}s",
+                    f"탄퍼짐: {w.spread}"
                 ]
                 for s in stats:
                     stat_surf = font_stats.render(s, True, (255,255,255))
@@ -159,6 +159,9 @@ class Player(pygame.sprite.Sprite):
             self.dash_start_time = current_time
             self.dash_vector = direction_vector
             self.is_invincible = True
+            dash_sfx = pygame.mixer.Sound(os.path.join(ASSET_SFX_DIR, "dash.mp3"))
+            dash_sfx.set_volume(0.7)
+            dash_sfx.play()
 
     def update(self, current_time):
         if self.is_dashing:

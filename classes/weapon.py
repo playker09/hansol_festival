@@ -70,7 +70,7 @@ class Weapon:
 
         elif self.mode == "shotgun":
             for _ in range(self.pellet_count):
-                self.spawn_bullet(px, py, dx, dy, bullets, damage=self.damage)
+                self.spawn_bullet(px, py, dx, dy, bullets, damage=1)
 
     def reload(self, current_time):
         if self.is_reloading:

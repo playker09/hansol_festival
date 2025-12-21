@@ -13,7 +13,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSET_IMAGE_DIR = os.path.join(BASE_DIR, "assets", "image")
 
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, x, y, size=30, speed=1.8, max_hp=2, damage=5, damage_cooldown=900):
+    def __init__(self, x, y, size=30, speed=1.3, max_hp=3, damage=5, damage_cooldown=900):
         super().__init__()
         self.original_image = pygame.image.load(os.path.join(ASSET_IMAGE_DIR, "enemy2.png")).convert_alpha()
         self.original_image = pygame.transform.scale(self.original_image, (50, 50))
@@ -78,14 +78,14 @@ class Enemy(pygame.sprite.Sprite):
 
 class FastEnemy(Enemy):
     def __init__(self, x, y):
-        super().__init__(x, y, max_hp=2, size=30,speed=3, damage=3, damage_cooldown=500)
+        super().__init__(x, y, max_hp=2, size=30,speed=2.5, damage=3, damage_cooldown=500)
         self.original_image = pygame.image.load(os.path.join(ASSET_IMAGE_DIR, "enemy1.png")).convert_alpha()
         self.original_image = pygame.transform.scale(self.original_image, (50, 50))
         self.image = self.original_image.copy()
 
 class TankEnemy(Enemy):
     def __init__(self, x, y):
-        super().__init__(x, y, max_hp=10, speed=1, damage=7, damage_cooldown=1500, size=45)
+        super().__init__(x, y, max_hp=20, speed=1, damage=7, damage_cooldown=1500, size=45)
         self.original_image = pygame.image.load(os.path.join(ASSET_IMAGE_DIR, "enemy3.png")).convert_alpha()
         self.original_image = pygame.transform.scale(self.original_image, (100, 100))
         self.image = self.original_image.copy()
@@ -121,7 +121,7 @@ class ExpOrb(pygame.sprite.Sprite):
         surface.blit(self.image, camera.apply(self.rect))
 
 class EMP_Tower(pygame.sprite.Sprite):
-    def __init__(self, x, y,player = None ,survive_time=20 ):
+    def __init__(self, x, y,player = None ,survive_time=30):
         super().__init__()
         self.original_image = pygame.image.load(os.path.join(ASSET_IMAGE_DIR, "tower.png")).convert_alpha()
         self.original_image = pygame.transform.scale(self.original_image, (100, 100))
@@ -138,12 +138,12 @@ class EMP_Tower(pygame.sprite.Sprite):
         # 타워마다 개별 스폰 타이머 관리
         self.spawn_timer = 0  
 
-    def start(self):
+    def start(self,towers):
         """플레이어가 타워와 상호작용하면 호출"""
         if not self.active and not self.activated:
             self.active = True
-            self.timer = self.survive_time
-            print("EMP Tower challenge started!")
+            active_towers = sum(1 for tower in towers if tower.activated)
+            self.timer = self.survive_time + (active_towers * 10)
 
     def activate(self, enemies, exp_orbs, all_sprites):
         """타워 발동: 모든 적 제거 (경험치 오브 생성)"""
@@ -175,7 +175,7 @@ class EMP_Tower(pygame.sprite.Sprite):
         keys = pygame.key.get_pressed()
         if not self.active and not self.activated:
             if self.rect.colliderect(player.rect) and keys[pygame.K_e]:
-                self.start()
+                self.start(towers)
     
         # 버티는 중이면 타이머 감소 + 적 스폰
         if self.active:
@@ -186,9 +186,9 @@ class EMP_Tower(pygame.sprite.Sprite):
             self.spawn_timer = spawn_enemies(
                 player, enemies, all_sprites,
                 self.spawn_timer, current_time,
-                base_interval=120,
+                base_interval=150,
                 base_num=7,
-                spawn_radius=1000,
+                spawn_radius=1400,
                 difficulty_scale=False,
                 extra_multiplier=1 + active_towers
             )
@@ -215,12 +215,12 @@ def spawn_enemies(
         spawn_timer, current_time,
         base_interval=180,          # 기본 스폰 주기 (tick 단위)
         base_num=5,                # 기본 스폰 수
-        margin=600,                 # 플레이어 최소 거리
-        spawn_radius=1200,          # 최대 거리
+        margin=1200,                 # 플레이어 최소 거리
+        spawn_radius=1400,          # 최대 거리
         enemy_size=32,              # 적 크기
         enemy_speed=2,              # 적 속도
         difficulty_scale=True,      # 시간 경과에 따른 난이도 증가 여부
-        extra_multiplier=1          # 웨이브일 때 배수 (기본은 1)
+        extra_multiplier=1.3          # 웨이브일 때 배수 (기본은 1)
     ):
         """적 스폰 함수. 기본 스폰 및 웨이브 이벤트 모두 지원."""
 
@@ -228,10 +228,10 @@ def spawn_enemies(
         if spawn_timer > base_interval:  
             # 난이도 스케일 (시간에 따라 강해짐)
             elapsed_sec = current_time // 1000
-            level_scale = (1 + elapsed_sec // 90) if difficulty_scale else 1
+            level_scale = (1 + elapsed_sec // 30) 
 
             # 이번에 스폰할 적 수
-            num_to_spawn = (base_num + level_scale) * extra_multiplier
+            num_to_spawn = round((base_num + level_scale) * extra_multiplier)
 
             # 적 스폰
             for _ in range(num_to_spawn):

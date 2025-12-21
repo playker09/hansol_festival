@@ -3,29 +3,29 @@ import math
 
 def draw_level(surface, font, player):
     """플레이어 레벨과 경험치 표시"""
-    level_text = font.render(f"Level: {player.level}  Exp: {player.exp}/{player.exp_to_next_level}", True, (255, 255, 255))
-    surface.blit(level_text, (10, 10))
+    level_text = font.render(f"LvL: {player.level} EXP: {player.exp}/{player.exp_to_next_level}", True, (255, 255, 255))
+    surface.blit(level_text, (40, 12))
 
 def draw_ammo(surface, font, player):
     """현재 무기 탄약 표시"""
     weapon = player.current_weapon
-    text = font.render(f"Ammo: {weapon.ammo_in_mag}/{weapon.reserve_ammo}", True, (255, 255, 255))
-    surface.blit(text, (10, 540)) 
+    text = font.render(f" {weapon.ammo_in_mag}", True, (255, 255, 255))
+    surface.blit(text, (40, 900)) 
 
 def draw_activated(surface, font, towers):
     """현재 활성화된 타워 개수 표시"""
     activated_count = sum(1 for t in towers if t.activated)
-    text = font.render(f"Activated Towers: {activated_count}", True, (255, 255, 255))
-    surface.blit(text, (555, 10))
+    text = font.render(f"타워: {activated_count} / 3", True, (255, 255, 255))
+    surface.blit(text, (1600, 15))
 
 def draw_dash_indicator(surface, font, player):
     """대쉬 가능 표시"""
     if player.dash_cooldown <= 0:
         text = font.render("DASH READY", True, (0, 255, 0))
-        surface.blit(text, (10, 570))
+        surface.blit(text, (60, 970))
     else: 
         text = font.render(f"{player.dash_cooldown/1000+1:.1f}", True, (2, 255, 0))
-        surface.blit(text, (10, 570))
+        surface.blit(text, (60, 970))
 # --- 마우스 조준선 ---
 def draw_crosshair(surface, mx, my, size=10, color=(255,255,255), width=2):
     pygame.draw.line(surface, color, (mx - size, my), (mx + size, my), width)
