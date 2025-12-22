@@ -59,12 +59,24 @@ def update_music(game_state):
 
     if game_state in ["play", "upgrade"]:
         if current_music_state != "ingame_bgm":
-            pygame.mixer.music.stop()
+            # stop any music stream, and ensure previous ingame Sound is stopped
+            try:
+                pygame.mixer.music.stop()
+            except Exception:
+                pass
+            try:
+                ingame_bgm.stop()
+            except Exception:
+                pass
             ingame_bgm.play(-1)  # 무한 반복
             current_music_state = "ingame_bgm"
     else:
-        if current_music_state is not None:
-            pygame.mixer.music.stop()
+        # only stop if currently playing ingame bgm
+        if current_music_state == "ingame_bgm":
+            try:
+                ingame_bgm.stop()
+            except Exception:
+                pass
             current_music_state = None
 
 def generate_tower_positions(num_towers, min_distance_between, min_center_distance):
@@ -137,6 +149,9 @@ def main():
 
         # 이벤트 처리
         for event in pygame.event.get():
+            # mark if this event was used by UI (so it won't also trigger firing)
+            event_consumed = False
+
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
@@ -165,15 +180,15 @@ def main():
                             pygame.mixer.Sound(click_sfx_path).play()
                             player.upgrading = False
                             game_state = "play"
-
-
-
+                            # consume the click so it doesn't also fire the weapon
+                            event_consumed = True
+                            
             # 장전
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
                     player.reload(current_time)
             # 발사 (오직 플레이 상태에서만 처리)
-            if event.type == pygame.MOUSEBUTTONDOWN and game_state == "play":
+            if event.type == pygame.MOUSEBUTTONDOWN and game_state == "play" and not event_consumed:
                 if event.button == 1:
                     mx, my = pygame.mouse.get_pos()
                     mode = player.current_weapon.mode

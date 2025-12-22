@@ -1,8 +1,10 @@
 import pygame
 import os
+import math
 from scenes.map import MAP_WIDTH, MAP_HEIGHT
 from classes.weapon import Weapon
-from assets.image.sprite_sheet import load_sprite_sheet, get_frame, extract_grid
+from assets.sprite_sheet import load_sprite_sheet, get_frame, extract_grid
+from assets import image_gun_x as gun_images
 # from scenes.upgrade import show_upgrade_screen
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -43,6 +45,7 @@ class Player(pygame.sprite.Sprite):
         }
         self.primary_weapon = None
         self.current_weapon = None
+        self.current_weapon_key = None  # for texture lookup (e.g. 'dmr','smg')
 
         # 업그레이드 관리
         self.upgrades = {
@@ -190,6 +193,11 @@ class Player(pygame.sprite.Sprite):
 
         self.primary_weapon = selected
         self.current_weapon = selected
+        # determine and save the weapon key so we can lookup textures like texture_gun_<key>
+        for k, v in self.weapons.items():
+            if v is selected:
+                self.current_weapon_key = k
+                break
 
 
 
@@ -312,6 +320,7 @@ class Player(pygame.sprite.Sprite):
     def switch_weapon(self, name):
         if name in self.weapons:
             self.current_weapon = self.weapons[name]
+            self.current_weapon_key = name
 
     def reload(self, current_time):
         self.current_weapon.reload(current_time)
@@ -344,6 +353,29 @@ class Player(pygame.sprite.Sprite):
 
         # 플레이어 본체 그리기
         surface.blit(self.image, camera.apply(self.rect))
+
+        # 현재 무기에 따라 총 그리기 (플레이어 중심에서 마우스 방향 바라보기, 왼쪽 각도면 반전)
+        if getattr(self, 'current_weapon_key', None):
+            gun_attr = f"texture_gun_{self.current_weapon_key}"
+            gun_surf = getattr(gun_images, gun_attr, None)
+            if gun_surf:
+                gun = gun_surf.copy()
+                gun = pygame.transform.scale(gun, (gun.get_width()*1.7, gun.get_height()*1.7))
+                # 플레이어 중심을 화면 좌표로 변환
+                px_screen = self.rect.centerx - camera.offset_x
+                py_screen = self.rect.centery - camera.offset_y
+                mx, my = pygame.mouse.get_pos()
+                dx = mx - px_screen
+                dy = my - py_screen
+                # 각도 계산 (0도는 오른쪽, 시계방향은 음수로 회전하기 위해 -angle 사용)
+                angle = math.degrees(math.atan2(dy, dx)) if not (dx == 0 and dy == 0) else 0
+                # 왼쪽을 바라볼 때는 원본을 좌우 반전
+                if dx < 0:
+                    gun = pygame.transform.flip(gun, False, True)
+                # 회전하고 플레이어 중앙에 배치
+                rotated = pygame.transform.rotate(gun, -angle)
+                rrect = rotated.get_rect(center=(px_screen, py_screen))
+                surface.blit(rotated, rrect)
 
         # 피격 시 붉게 깜박임(점점 사라짐) - 투명 픽셀은 보호
         elapsed = now - getattr(self, 'last_hit_time', 0)

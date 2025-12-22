@@ -16,7 +16,7 @@ def draw_activated(surface, font, towers):
     """현재 활성화된 타워 개수 표시"""
     activated_count = sum(1 for t in towers if t.activated)
     text = font.render(f"타워: {activated_count} / 3", True, (255, 255, 255))
-    surface.blit(text, (1600, 15))
+    surface.blit(text, (1650, 15))
 
 def draw_dash_indicator(surface, font, player):
     """대쉬 가능 표시"""
