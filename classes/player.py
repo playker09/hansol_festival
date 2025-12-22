@@ -35,9 +35,9 @@ class Player(pygame.sprite.Sprite):
 
         # 주무기 & 무기 선택
         self.weapons = {
-            "dmr": Weapon("DMR", fire_rate=130, spread=1, mode="single", mag_size=25, reload_time=900, damage=5),
-            "smg": Weapon("SMG", fire_rate=90, spread=5, mode="auto", reload_time=1200,damage=2),
-            "rifle": Weapon("Rifle", fire_rate=120, spread=3, mode="auto", reload_time= 1600, damage=4),
+            "dmr": Weapon("DMR", fire_rate=130, spread=1, mode="single", mag_size=25, reload_time=900, damage=5, pierce_level=3),
+            "smg": Weapon("SMG", fire_rate=90, spread=5, mode="auto", reload_time=1200,damage=2, pierce_level=1),
+            "rifle": Weapon("Rifle", fire_rate=120, spread=3, mode="auto", reload_time= 1600, damage=3, pierce_level=2),
             "shotgun": Weapon("Shotgun", fire_rate=700, spread=15, mode="shotgun", pellet_count=7,damage=2)
         }
         self.primary_weapon = None

@@ -14,7 +14,7 @@ from scenes.map import draw_grid, MAP_WIDTH, MAP_HEIGHT
 from scenes.game_over import game_over_screen, game_success_screen
 from hud import draw_level, draw_ammo, draw_dash_indicator, draw_crosshair, draw_reload_circle, draw_emp_indicator, draw_activated
 from classes.upgrade import generate_upgrades, draw_upgrade_ui, COMMON_UPGRADES, WEAPON_SPECIFIC, ACCESSORIES
-from scenes.lobby import lobby_screen   
+from scenes.lobby import lobby_screen, tutorial_screen   
 
 # 초기화
 pygame.init()
@@ -99,6 +99,8 @@ def main():
     # 모든 스프라이트 그룹
     player = Player()
     lobby_screen(WIN, WIDTH, HEIGHT)
+    # 튜토리얼 화면 표시 (Start 후)
+    tutorial_screen(WIN, WIDTH, HEIGHT)
     player.choose_primary_weapon(WIN, WIDTH, HEIGHT)
     game_state = "play"
     

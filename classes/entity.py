@@ -134,6 +134,9 @@ class EMP_Tower(pygame.sprite.Sprite):
         self.timer = 0           # 남은 시간
         self.font = pygame.font.SysFont(None, 32)
         self.player = player
+        # 흡수 반경 (px) 및 흡수 속도 — 출입 불가 링 반경과 동일하게 사용
+        self.absorb_radius = 900
+        self.absorb_speed = 15
 
         # 타워마다 개별 스폰 타이머 관리
         self.spawn_timer = 0  
@@ -159,16 +162,15 @@ class EMP_Tower(pygame.sprite.Sprite):
                 all_sprites.add(orb)
 
                 enemy.kill()
-            absorb_radius = 800
-            absorb_speed = 15
+            # 흡수 반경과 속도는 인스턴스 속성을 사용
             for orb in exp_orbs:
                 dx = orb.rect.centerx - self.rect.centerx
                 dy = orb.rect.centery - self.rect.centery
                 dist = (dx*dx + dy*dy) ** 0.5
-                if dist < absorb_radius:
+                if dist < self.absorb_radius:
                     orb.absorbing = True
                     orb.target = self.player
-                    orb.absorb_speed = absorb_speed
+                    orb.absorb_speed = self.absorb_speed
 
     def update(self, dt, player, enemies, all_sprites, exp_orbs, current_time,towers):
         """타워 로직"""
@@ -183,6 +185,21 @@ class EMP_Tower(pygame.sprite.Sprite):
 
             active_towers = sum(1 for tower in towers if tower.active or tower.activated)
 
+            # 플레이어가 출입 불가 링을 벗어나지 못하도록 강제
+            if self.player:
+                dx = self.player.rect.centerx - self.rect.centerx
+                dy = self.player.rect.centery - self.rect.centery
+                dist = math.hypot(dx, dy)
+                if dist > self.absorb_radius and dist != 0:
+                    nx = self.rect.centerx + dx / dist * self.absorb_radius
+                    ny = self.rect.centery + dy / dist * self.absorb_radius
+                    self.player.rect.centerx = int(nx)
+                    self.player.rect.centery = int(ny)
+                    # 맵 범위 내로 보정
+                    self.player.rect.centerx = max(0, min(MAP_WIDTH, self.player.rect.centerx))
+                    self.player.rect.centery = max(0, min(MAP_HEIGHT, self.player.rect.centery))
+
+            # Spawn enemies around the tower using the ring radius so enemies can move freely in/out
             self.spawn_timer = spawn_enemies(
                 player, enemies, all_sprites,
                 self.spawn_timer, current_time,
@@ -190,21 +207,29 @@ class EMP_Tower(pygame.sprite.Sprite):
                 base_num=7,
                 spawn_radius=1400,
                 difficulty_scale=False,
-                extra_multiplier=1 + active_towers
+                extra_multiplier=1 + active_towers,
+                spawn_center=self.rect.center  # 중심을 타워로 변경
             )
             if self.timer <= 0:
-                self.activate(enemies, exp_orbs, all_sprites)
+                self.activate(enemies, exp_orbs, all_sprites) 
 
     def draw(self, screen, camera):
         """타워와 남은 시간 표시"""
         screen.blit(self.image, camera.apply(self.rect))
 
+        # 시각적 링 그리기 (월드 좌표 -> 화면 좌표 변환)
+        screen_x = int(self.rect.centerx - camera.offset_x)
+        screen_y = int(self.rect.centery - camera.offset_y)
         if self.active and not self.activated:
+            # 노란색 링: 플레이어 출입 불가
+            pygame.draw.circle(screen, (255, 255, 0), (screen_x, screen_y), int(self.absorb_radius), 3)
             text = self.font.render(str(int(self.timer) + 1), True, (255, 255, 0))
             text_rect = text.get_rect(center=(self.rect.centerx - camera.offset_x,
                                               self.rect.top - 20 - camera.offset_y))
             screen.blit(text, text_rect)
         elif self.activated:
+            # 녹색 링: 이미 발동됨
+            pygame.draw.circle(screen, (0, 255, 0), (screen_x, screen_y), int(self.absorb_radius), 3)
             text = self.font.render("ONLINE", True, (0, 255, 0))
             text_rect = text.get_rect(center=(self.rect.centerx - camera.offset_x,
                                               self.rect.top - 20 - camera.offset_y))
@@ -215,14 +240,19 @@ def spawn_enemies(
         spawn_timer, current_time,
         base_interval=180,          # 기본 스폰 주기 (tick 단위)
         base_num=5,                # 기본 스폰 수
-        margin=1200,                 # 플레이어 최소 거리
-        spawn_radius=1400,          # 최대 거리
+        margin=1200,                 # 플레이어 최소 거리 (기본값)
+        spawn_radius=1400,          # 최대 거리 (기본값)
         enemy_size=32,              # 적 크기
         enemy_speed=2,              # 적 속도
         difficulty_scale=True,      # 시간 경과에 따른 난이도 증가 여부
-        extra_multiplier=1.3          # 웨이브일 때 배수 (기본은 1)
+        extra_multiplier=1.1,         # 웨이브일 때 배수 (기본은 1)
+        spawn_center=None            # (x,y) 중심을 지정하면 그 중심을 기준으로 스폰
     ):
-        """적 스폰 함수. 기본 스폰 및 웨이브 이벤트 모두 지원."""
+        """적 스폰 함수. 기본 스폰 및 웨이브 이벤트 모두 지원.
+
+        이제 선택적으로 spawn_center=(x,y)를 전달하면 해당 좌표를 기준으로 적을 소환합니다.
+        기본 동작은 기존과 동일하게 플레이어 중심을 기준으로 소환합니다.
+        """
 
         spawn_timer += 1
         if spawn_timer > base_interval:  
@@ -233,13 +263,19 @@ def spawn_enemies(
             # 이번에 스폰할 적 수
             num_to_spawn = round((base_num + level_scale) * extra_multiplier)
 
+            # 스폰 기준점 결정 (spawn_center가 있으면 그걸 사용하고, 없으면 플레이어 중심 사용)
+            if spawn_center is not None:
+                center_x, center_y = spawn_center
+            else:
+                center_x, center_y = player.rect.centerx, player.rect.centery
+
             # 적 스폰
             for _ in range(num_to_spawn):
                 while True:
                     angle = random.uniform(0, 2*math.pi)
                     distance = random.randint(margin, spawn_radius)
-                    spawn_x = int(player.rect.centerx + math.cos(angle) * distance)
-                    spawn_y = int(player.rect.centery + math.sin(angle) * distance)
+                    spawn_x = int(center_x + math.cos(angle) * distance)
+                    spawn_y = int(center_y + math.sin(angle) * distance)
 
                     # 맵 범위 제한
                     spawn_x = max(0, min(MAP_WIDTH - enemy_size, spawn_x))
