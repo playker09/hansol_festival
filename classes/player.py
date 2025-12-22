@@ -2,6 +2,7 @@ import pygame
 import os
 from scenes.map import MAP_WIDTH, MAP_HEIGHT
 from classes.weapon import Weapon
+from assets.image.sprite_sheet import load_sprite_sheet, get_frame, extract_grid
 # from scenes.upgrade import show_upgrade_screen
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -70,16 +71,52 @@ class Player(pygame.sprite.Sprite):
         self.trail_interval = 30   # ms 간격으로 잔상 생성
         self._last_trail_time = 0
 
+        # 애니메이션 (스프라이트 시트 기반)
+        self.anim_frames = []
+        try:
+            sheet = load_sprite_sheet(os.path.join(ASSET_IMAGE_DIR, "player_motion.png"))
+            # 사용자 제공: frame size is 23x44, 5 frames (1 idle + 4 walk)
+            frames_count = 5
+            frame_w, frame_h = 23, 44
+            frames = []
+            for i in range(frames_count):
+                rect = pygame.Rect(i * frame_w, 0, frame_w, frame_h)
+                # 안전하게 부분 복사 (영역이 시트 밖이면 투명으로 채워짐)
+                frame = pygame.Surface((frame_w, frame_h), pygame.SRCALPHA)
+                frame.blit(sheet, (0, 0), rect)
+                frames.append(frame)
+            # 스케일해서 사용
+            self.anim_frames = [pygame.transform.scale(f, (34, 66)) for f in frames]
+        except Exception:
+            # 로드 실패 시 기존 이미지 사용
+            self.anim_frames = [self.original_image.copy()]
+
+        self.anim_index = 0
+        self.anim_interval = 100  # ms per frame when walking
+        self.last_anim_time = 0
+        self.moving = False
+
         # 레벨업 큐 시스템
         self.level_up_queue = 0
         self.upgrading = False
 
+        # 피격(붉게 깜박임) 관련
+        self.last_hit_time = 0
+        self.hit_flash_duration = 250  # ms
+
     def update_image(self):
-        # 이미지 방향에 따라 현재 이미지를 설정
-        if self.facing_right:
-            self.image = self.original_image.copy()
+        # 애니메이션 프레임 또는 기본 이미지로 현재 이미지를 설정
+        if self.anim_frames:
+            # anim_index에 따른 프레임 선택 (좌우 반전 지원)
+            frame = self.anim_frames[self.anim_index % len(self.anim_frames)]
+            if not self.facing_right:
+                frame = pygame.transform.flip(frame, True, False)
+            self.image = frame.copy()
         else:
-            self.image = pygame.transform.flip(self.original_image, True, False)
+            if self.facing_right:
+                self.image = self.original_image.copy()
+            else:
+                self.image = pygame.transform.flip(self.original_image, True, False)
 
     def choose_primary_weapon(self, surface, WIDTH, HEIGHT):
         font_title = pygame.font.SysFont("malgungothic", 36, bold=True)
@@ -170,15 +207,24 @@ class Player(pygame.sprite.Sprite):
 
         # 대쉬 중에는 이동 입력 무시 (단, 방향은 위에서 반영됨)
         if self.is_dashing:
+            self.moving = False
             return
+        moved = False
         if keys[pygame.K_w] and self.rect.top > 0:
             self.rect.y -= self.speed
+            moved = True
         if keys[pygame.K_s] and self.rect.bottom < MAP_HEIGHT:
             self.rect.y += self.speed
+            moved = True
         if keys[pygame.K_a] and self.rect.left > 0:
             self.rect.x -= self.speed
+            moved = True
         if keys[pygame.K_d] and self.rect.right < MAP_WIDTH:
             self.rect.x += self.speed
+            moved = True
+
+        # 이동 여부 플래그
+        self.moving = moved
 
     def dash(self, direction_vector, current_time):
         if not self.is_dashing and self.dash_cooldown <= 0:
@@ -238,6 +284,27 @@ class Player(pygame.sprite.Sprite):
 
         self.update_weapon(current_time)
 
+        # 애니메이션 업데이트 (현재 시간 기준)
+        if self.moving:
+            if current_time - self.last_anim_time >= self.anim_interval:
+                self.last_anim_time = current_time
+                if len(self.anim_frames) > 1:
+                    # 프레임 0은 idle로 유지, 걷기 애니메이션은 1..n-1
+                    if self.anim_index == 0:
+                        self.anim_index = 1
+                    else:
+                        self.anim_index += 1
+                        if self.anim_index >= len(self.anim_frames):
+                            self.anim_index = 1
+                else:
+                    self.anim_index = 0
+        else:
+            # 멈추면 idle (0번)으로 되돌림
+            self.anim_index = 0
+
+        # 이미지 갱신
+        self.update_image()
+
     def shoot(self, mx, my, camera, bullets, current_time):
         px, py = self.rect.center
         self.current_weapon.shoot(px, py, mx, my, camera, bullets, current_time)
@@ -277,6 +344,20 @@ class Player(pygame.sprite.Sprite):
 
         # 플레이어 본체 그리기
         surface.blit(self.image, camera.apply(self.rect))
+
+        # 피격 시 붉게 깜박임(점점 사라짐) - 투명 픽셀은 보호
+        elapsed = now - getattr(self, 'last_hit_time', 0)
+        if elapsed < self.hit_flash_duration:
+            ratio = 1.0 - (elapsed / self.hit_flash_duration)
+            alpha = int(160 * ratio)  # 최대 알파 160
+            # 원본 프레임의 알파를 유지하면서 빨간 톤 적용
+            red_surf = self.image.copy()
+            red_surf.fill((255, 0, 0, alpha), special_flags=pygame.BLEND_RGBA_MULT)
+            rect = self.image.get_rect(center=self.rect.center)
+            surface.blit(red_surf, camera.apply(rect))
+
+        # 플레이어 HP 바는 별도의 함수로 처리됨
+
 
     def draw_hp_bar(self, surface, camera):
         bar_width = 50

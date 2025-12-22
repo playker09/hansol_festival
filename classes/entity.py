@@ -11,6 +11,7 @@ ENEMY_SIZE = 30
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSET_IMAGE_DIR = os.path.join(BASE_DIR, "assets", "image")
+ASSET_SFX_DIR = os.path.join(BASE_DIR, "assets", "sfx")
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, x, y, size=30, speed=1.3, max_hp=3, damage=5, damage_cooldown=900):
@@ -29,6 +30,10 @@ class Enemy(pygame.sprite.Sprite):
         self.knockback_x = 0
         self.knockback_y = 0
         self.knockback_decay = 0.85  # 매 프레임마다 줄어드는 비율
+
+        # 피격(붉게 깜박임) 관련
+        self.last_hurt_time = 0
+        self.hurt_flash_duration = 180  # ms
 
     def move(self, player_rect, enemies):
         self.rect.x += self.knockback_x
@@ -64,9 +69,26 @@ class Enemy(pygame.sprite.Sprite):
         """플레이어에게 피해를 주고 마지막 공격 시간 업데이트"""
         player.hp -= self.damage
         self.last_hit_time = current_time
+        # 플레이어가 피격되었음을 표시하여 붉게 깜박이게 함
+        try:
+            player.last_hit_time = current_time
+        except Exception:
+            pass
 
     def draw(self, surface, camera):
         surface.blit(self.image, camera.apply(self.rect))
+
+        # 피격 시 붉게 깜박임 - 투명 영역 보호
+        now = pygame.time.get_ticks()
+        elapsed = now - getattr(self, 'last_hurt_time', 0)
+        if elapsed < self.hurt_flash_duration:
+            ratio = 1.0 - (elapsed / self.hurt_flash_duration)
+            alpha = int(150 * ratio)
+            red_surf = self.image.copy()
+            red_surf.fill((255, 0, 0, alpha), special_flags=pygame.BLEND_RGBA_MULT)
+            rect = self.image.get_rect(topleft=self.rect.topleft)
+            surface.blit(red_surf, camera.apply(rect))
+
         # 체력바
         bar_width = self.rect.width
         bar_height = 5
@@ -109,7 +131,14 @@ class ExpOrb(pygame.sprite.Sprite):
             dist = math.hypot(dx, dy)   #  올바른 거리 계산
 
             if dist < 10:
+                # 경험치 지급 및 효과음
                 self.target.gain_exp(self.value)
+                try:
+                    s = pygame.mixer.Sound(os.path.join(ASSET_SFX_DIR, "exp1.mp3"))
+                    s.set_volume(0.3)
+                    s.play()
+                except Exception:
+                    pass
                 self.kill()
             else:
                 self.rect.x += dx / dist * self.absorb_speed

@@ -89,3 +89,46 @@ def draw_emp_indicator(surface, player, towers, camera):
     ]
     
     pygame.draw.polygon(surface, (255, 255, 0), points)
+
+
+def draw_health_vignette(surface, player, max_thickness=140):
+    """플레이어 체력 비율에 따라 화면 가장자리에 붉은 비네팅을 그립니다.
+
+    - 효과 시작: 체력 30% 이하부터 서서히 적용
+    - 완전히 붉어지지 않도록 최대 불투명도를 제한
+    """
+    hp_ratio = max(0.0, min(1.0, player.hp / player.max_hp))
+    start_threshold = 0.30  # 30%부터 효과 시작
+    # 시작값보다 높으면 효과 없음
+    if hp_ratio > start_threshold:
+        return
+
+    # 정규화: start_threshold -> 0.0    0.0 -> 1.0
+    norm = (start_threshold - hp_ratio) / start_threshold
+    norm = max(0.0, min(1.0, norm))
+
+    # 최대 강도 제한 (255가 아닌 값으로 완전 붉어짐 방지)
+    MAX_ALPHA = 100
+    alpha = int(MAX_ALPHA * norm)  # 0..MAX_ALPHA
+
+    steps = 6
+    w, h = surface.get_width(), surface.get_height()
+
+    for i in range(steps):
+        t = int(max_thickness * (i + 1) / steps)
+        # 바깥쪽일수록 불투명도 낮게 하기 위해 계단식 곡선 적용
+        a = int(alpha * ((i + 1) / steps) ** 1.2)
+        if a <= 0:
+            continue
+        # 위쪽
+        s_top = pygame.Surface((w, t), pygame.SRCALPHA)
+        s_top.fill((255, 0, 0, a))
+        surface.blit(s_top, (0, 0))
+        # 아래쪽
+        surface.blit(s_top, (0, h - t))
+        # 왼쪽
+        s_left = pygame.Surface((t, h), pygame.SRCALPHA)
+        s_left.fill((255, 0, 0, a))
+        surface.blit(s_left, (0, 0))
+        # 오른쪽
+        surface.blit(s_left, (w - t, 0))

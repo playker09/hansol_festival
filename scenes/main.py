@@ -12,7 +12,7 @@ from classes.entity import spawn_enemies, EMP_Tower, ExpOrb
 from classes.camera import Camera
 from scenes.map import draw_grid, MAP_WIDTH, MAP_HEIGHT
 from scenes.game_over import game_over_screen, game_success_screen
-from hud import draw_level, draw_ammo, draw_dash_indicator, draw_crosshair, draw_reload_circle, draw_emp_indicator, draw_activated
+from hud import draw_level, draw_ammo, draw_dash_indicator, draw_crosshair, draw_reload_circle, draw_emp_indicator, draw_activated, draw_health_vignette
 from classes.upgrade import generate_upgrades, draw_upgrade_ui, COMMON_UPGRADES, WEAPON_SPECIFIC, ACCESSORIES, reset_upgrades
 from scenes.lobby import lobby_screen, tutorial_screen   
 
@@ -235,6 +235,11 @@ def main():
                 hit_enemies = pygame.sprite.spritecollide(bullet, enemies, False)
                 for enemy in hit_enemies:
                     enemy.hp -= bullet.damage
+                    # 피격 표시 시간 설정
+                    try:
+                        enemy.last_hurt_time = current_time
+                    except Exception:
+                        pass
 
                     # 넉백 계산
                     dx = enemy.rect.centerx - bullet.rect.centerx
@@ -277,17 +282,23 @@ def main():
                 enemy.move(player.rect, enemies)
             pass
 
-        for exp in exp_orbs:
-            exp.update()
-
-        # 경험치 오브 흡수
+        # 경험치 오브: 가까이 있으면 자동으로 끌려오고, 흡수가 진행됩니다.
+        ATTRACT_RADIUS = 220  # 픽셀
         for orb in exp_orbs.copy():
-            if player.rect.colliderect(orb.rect):
-                player.gain_exp(orb.value)  # 경험치 획득
-                orb.kill()
-                s = pygame.mixer.Sound(os.path.join(ASSET_SFX_DIR, "exp1.mp3"))
-                s.set_volume(0.3)
-                s.play()
+            # 거리 계산 (플레이어 중심과 오브 중심)
+            dx = player.rect.centerx - orb.rect.centerx
+            dy = player.rect.centery - orb.rect.centery
+            dist = math.hypot(dx, dy)
+            # 가까워지면 흡수 시작 (타워에 의해 이미 흡수 중이면 건너뜀)
+            if not orb.absorbing and dist < ATTRACT_RADIUS:
+                orb.absorbing = True
+                orb.target = player
+                # 흡수 속도는 거리에 따라 다르게 (가까울수록 빠름)
+                orb.absorb_speed = min(18, 4 + (ATTRACT_RADIUS - dist) / 30 * 8)
+            # 지속적으로 흡수 속도 약간 증가시켜 당김 느낌 강화
+            if orb.absorbing and orb.target == player:
+                orb.absorb_speed = min(20, orb.absorb_speed + 0.2)
+            orb.update()
 
         # 레벨업 큐 확인
         if player.level_up_queue > 0 and game_state != "upgrade":
@@ -330,6 +341,9 @@ def main():
 
         if game_state == "upgrade":
             btn_rects = draw_upgrade_ui(WIN, player, upgrade_choices)
+
+        # 체력에 따른 화면 가장자리 붉어짐 효과
+        draw_health_vignette(WIN, player)
 
         pygame.display.update()
 
