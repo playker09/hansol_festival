@@ -35,7 +35,7 @@ ingame_bgm = pygame.mixer.Sound(os.path.join(ASSET_SFX_DIR, "bgm1.wav"))
 ingame_bgm.set_volume(0.3)
 # 프로젝트 루트 기준
 
-# 클릭 사운드 재생
+# 클릭 사운드 
 click_sfx_path = os.path.join(ASSET_SFX_DIR, "click.mp3")
 
 current_music_state = None  # 지금 어떤 상태에서 음악이 재생되고 있는지 기록

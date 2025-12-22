@@ -14,7 +14,7 @@ ASSET_IMAGE_DIR = os.path.join(BASE_DIR, "assets", "image")
 ASSET_SFX_DIR = os.path.join(BASE_DIR, "assets", "sfx")
 
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, x, y, size=30, speed=1.3, max_hp=3, damage=5, damage_cooldown=900):
+    def __init__(self, x, y, size=30, speed=1.2, max_hp=2.7, damage=5, damage_cooldown=900):
         super().__init__()
         self.original_image = pygame.image.load(os.path.join(ASSET_IMAGE_DIR, "enemy2.png")).convert_alpha()
         self.original_image = pygame.transform.scale(self.original_image, (50, 50))
@@ -153,7 +153,7 @@ class EMP_Tower(pygame.sprite.Sprite):
     def __init__(self, x, y,player = None ,survive_time=30):
         super().__init__()
         self.original_image = pygame.image.load(os.path.join(ASSET_IMAGE_DIR, "tower.png")).convert_alpha()
-        self.original_image = pygame.transform.scale(self.original_image, (100, 100))
+        self.original_image = pygame.transform.scale(self.original_image, (self.original_image.get_width()*1.7, self.original_image.get_height()*1.7))
         self.image = self.original_image.copy()
         self.rect = self.image.get_rect(center=(x, y))
         
