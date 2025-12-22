@@ -49,16 +49,16 @@ def draw_reload_circle(surface, pos, radius, weapon):
                     (pos[0]-radius, pos[1]-radius, radius*2, radius*2),
                     end_angle, start_angle, 3)  # <- width=3 고정
     
-def draw_emp_indicator(surface, player, towers):
+def draw_emp_indicator(surface, player, towers, camera):
     """
-    플레이어 기준 가장 가까운 **활성화되지 않은 타워**만 표시
+    플레이어 기준 가장 가까운 **활성화되지 않은 타워**만 표시 (플레이어 중심에 표시)
     """
     # 활성화되지 않은 타워만 선택
     inactive_towers = [t for t in towers if not t.activated]
     if not inactive_towers:
         return
 
-    # 가장 가까운 타워 선택
+    # 가장 가까운 타워 선택 (월드 좌표 기반)
     nearest_tower = min(
         inactive_towers,
         key=lambda t: math.hypot(t.rect.centerx - player.rect.centerx,
@@ -74,7 +74,9 @@ def draw_emp_indicator(surface, player, towers):
 
     # 방향 계산
     angle = math.atan2(dy, dx)
-    cx, cy = surface.get_width() // 2, surface.get_height() // 2
+    # 플레이어의 화면상의 위치를 기준으로 화살표를 그림
+    cx = player.rect.centerx - camera.offset_x
+    cy = player.rect.centery - camera.offset_y
     offset = 100
     indicator_size = 20
     arrow_x = cx + math.cos(angle) * offset

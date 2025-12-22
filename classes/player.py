@@ -61,9 +61,25 @@ class Player(pygame.sprite.Sprite):
         self.dash_cooldown = 0
         self.is_invincible = False
 
+        # 방향(좌/우) -> 기본 오른쪽
+        self.facing_right = True
+
+        # 대쉬 잔상(trail) 관련
+        self.trails = []  # 각 항목: { 'image': Surface, 'pos': (cx, cy), 'time': created_time }
+        self.trail_duration = 300  # ms
+        self.trail_interval = 30   # ms 간격으로 잔상 생성
+        self._last_trail_time = 0
+
         # 레벨업 큐 시스템
         self.level_up_queue = 0
         self.upgrading = False
+
+    def update_image(self):
+        # 이미지 방향에 따라 현재 이미지를 설정
+        if self.facing_right:
+            self.image = self.original_image.copy()
+        else:
+            self.image = pygame.transform.flip(self.original_image, True, False)
 
     def choose_primary_weapon(self, surface, WIDTH, HEIGHT):
         font_title = pygame.font.SysFont("malgungothic", 36, bold=True)
@@ -142,6 +158,17 @@ class Player(pygame.sprite.Sprite):
 
 
     def move(self, keys):
+        # 입력에 따른 좌우 방향 결정 (이미지 반전)
+        if keys[pygame.K_a]:
+            if self.facing_right:
+                self.facing_right = False
+                self.update_image()
+        elif keys[pygame.K_d]:
+            if not self.facing_right:
+                self.facing_right = True
+                self.update_image()
+
+        # 대쉬 중에는 이동 입력 무시 (단, 방향은 위에서 반영됨)
         if self.is_dashing:
             return
         if keys[pygame.K_w] and self.rect.top > 0:
@@ -159,6 +186,26 @@ class Player(pygame.sprite.Sprite):
             self.dash_start_time = current_time
             self.dash_vector = direction_vector
             self.is_invincible = True
+
+            # 대시 방향에 맞춰 좌우 반전 적용
+            dx = direction_vector[0]
+            if dx < 0:
+                if self.facing_right:
+                    self.facing_right = False
+                    self.update_image()
+            elif dx > 0:
+                if not self.facing_right:
+                    self.facing_right = True
+                    self.update_image()
+
+            # 초기 잔상 생성
+            self._last_trail_time = current_time
+            self.trails.append({
+                'image': self.image.copy(),
+                'pos': self.rect.center,
+                'time': current_time
+            })
+
             dash_sfx = pygame.mixer.Sound(os.path.join(ASSET_SFX_DIR, "dash.mp3"))
             dash_sfx.set_volume(0.7)
             dash_sfx.play()
@@ -169,10 +216,22 @@ class Player(pygame.sprite.Sprite):
             if elapsed < self.dash_duration:
                 self.rect.x += self.dash_vector[0] * self.dash_speed
                 self.rect.y += self.dash_vector[1] * self.dash_speed
+
+                # 대시 중이면 정해진 간격으로 잔상 생성
+                if current_time - self._last_trail_time >= self.trail_interval:
+                    self._last_trail_time = current_time
+                    self.trails.append({
+                        'image': self.image.copy(),
+                        'pos': self.rect.center,
+                        'time': current_time
+                    })
             else:
                 self.is_dashing = False
                 self.is_invincible = False
                 self.dash_cooldown = self.dash_cooldown_time
+
+        # 오래된 잔상 제거
+        self.trails = [t for t in self.trails if current_time - t['time'] < self.trail_duration]
 
         if self.dash_cooldown > 0:
             self.dash_cooldown -= 16
@@ -205,6 +264,18 @@ class Player(pygame.sprite.Sprite):
         return leveled_up
 
     def draw(self, surface, camera):
+        now = pygame.time.get_ticks()
+        # 잔상 그리기 (나중에 사라지도록 점점 투명해짐)
+        for t in self.trails:
+            age = now - t['time']
+            alpha = max(0, 255 * (1 - age / self.trail_duration))
+            surf = t['image'].copy()
+            # 표면에 알파 설정
+            surf.set_alpha(int(alpha))
+            rect = surf.get_rect(center=(t['pos'][0], t['pos'][1]))
+            surface.blit(surf, camera.apply(rect))
+
+        # 플레이어 본체 그리기
         surface.blit(self.image, camera.apply(self.rect))
 
     def draw_hp_bar(self, surface, camera):

@@ -178,3 +178,14 @@ def draw_upgrade_ui(surface, player, choices):
         surface.blit(desc, (btn_rect.x + 10, btn_rect.y + 45))
 
     return btn_rects
+
+
+def reset_upgrades():
+    """게임 재시작 시 모든 업그레이드 레벨을 초기화합니다."""
+    for up in COMMON_UPGRADES:
+        up.level = 0
+    for lst in WEAPON_SPECIFIC.values():
+        for up in lst:
+            up.level = 0
+    for up in ACCESSORIES:
+        up.level = 0

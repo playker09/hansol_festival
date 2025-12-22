@@ -13,7 +13,7 @@ from classes.camera import Camera
 from scenes.map import draw_grid, MAP_WIDTH, MAP_HEIGHT
 from scenes.game_over import game_over_screen, game_success_screen
 from hud import draw_level, draw_ammo, draw_dash_indicator, draw_crosshair, draw_reload_circle, draw_emp_indicator, draw_activated
-from classes.upgrade import generate_upgrades, draw_upgrade_ui, COMMON_UPGRADES, WEAPON_SPECIFIC, ACCESSORIES
+from classes.upgrade import generate_upgrades, draw_upgrade_ui, COMMON_UPGRADES, WEAPON_SPECIFIC, ACCESSORIES, reset_upgrades
 from scenes.lobby import lobby_screen, tutorial_screen   
 
 # 초기화
@@ -96,6 +96,9 @@ def main():
     
     game_state = "prepare"
 
+    # 업그레이드 상태 초기화
+    reset_upgrades()
+
     # 모든 스프라이트 그룹
     player = Player()
     lobby_screen(WIN, WIDTH, HEIGHT)
@@ -169,8 +172,8 @@ def main():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
                     player.reload(current_time)
-            # 발사
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            # 발사 (오직 플레이 상태에서만 처리)
+            if event.type == pygame.MOUSEBUTTONDOWN and game_state == "play":
                 if event.button == 1:
                     mx, my = pygame.mouse.get_pos()
                     mode = player.current_weapon.mode
@@ -179,7 +182,7 @@ def main():
                     elif mode == "auto":
                         shooting = True
 
-            if event.type == pygame.MOUSEBUTTONUP:
+            if event.type == pygame.MOUSEBUTTONUP and game_state == "play":
                 if event.button == 1:
                     shooting = False
         
@@ -322,7 +325,7 @@ def main():
         mx, my = pygame.mouse.get_pos()
         draw_crosshair(WIN, mx, my)
         draw_reload_circle(WIN, (mx, my), 20, player.current_weapon)
-        draw_emp_indicator(WIN, player, towers)
+        draw_emp_indicator(WIN, player, towers, camera)
         draw_activated(WIN, font, towers)
 
         if game_state == "upgrade":

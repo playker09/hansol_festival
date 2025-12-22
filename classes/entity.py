@@ -141,6 +141,17 @@ class EMP_Tower(pygame.sprite.Sprite):
         # 타워마다 개별 스폰 타이머 관리
         self.spawn_timer = 0  
 
+        # 파동 이펙트 관련
+        self.wave_active = False
+        self.wave_radius = 0.0
+        self.wave_duration = 0.8  # 초 단위: 파동이 최대 반경까지 확장되는 시간
+        self.wave_max_radius = self.absorb_radius  # 파동의 최대 반경
+        self.wave_speed = (self.wave_max_radius / self.wave_duration) if self.wave_duration > 0 else 0
+        self._affected_enemies = set()  # 이미 파동에 의해 처리된 적 ID 저장
+        self._pops = []  # 파동에 맞은 적 위치에서 잠깐 보여줄 이펙트 (pos, time, max_radius)
+        self._wave_sfx = None  # 필요시 사운드 재생
+        
+
     def start(self,towers):
         """플레이어가 타워와 상호작용하면 호출"""
         if not self.active and not self.activated:
@@ -149,28 +160,27 @@ class EMP_Tower(pygame.sprite.Sprite):
             self.timer = self.survive_time + (active_towers * 10)
 
     def activate(self, enemies, exp_orbs, all_sprites):
-        """타워 발동: 모든 적 제거 (경험치 오브 생성)"""
-        if not self.activated:
-            self.activated = True
-            self.active = False
+        """타워 발동: 즉시 모두 제거하지 않고 확장하는 파동을 발생시켜 자연스럽게 적을 제거한다."""
+        # 이미 발동 파동이 진행중이면 무시
+        if self.wave_active or self.activated:
+            return
 
-            # 적 모두 제거 + 경험치 드랍
-            for enemy in list(enemies):  # 복사본으로 순회
-                # 경험치 오브 생성 (Enemy 클래스에 exp 값 있다고 가정)
-                orb = ExpOrb(enemy.rect.centerx, enemy.rect.centery, random.randint(1, 7))
-                exp_orbs.add(orb)
-                all_sprites.add(orb)
+        self.active = False
+        self.wave_active = True
+        self.wave_radius = 0.0
+        self._affected_enemies = set()
+        self._pops = []
+        # 재생 사운드가 있으면 재생 (파일이 있으면 추가 가능)
+        try:
+            s = pygame.mixer.Sound(os.path.join(BASE_DIR, "assets", "sfx", "emp_wave.mp3"))
+            s.set_volume(0.6)
+            s.play()
+        except Exception:
+            pass
 
-                enemy.kill()
-            # 흡수 반경과 속도는 인스턴스 속성을 사용
-            for orb in exp_orbs:
-                dx = orb.rect.centerx - self.rect.centerx
-                dy = orb.rect.centery - self.rect.centery
-                dist = (dx*dx + dy*dy) ** 0.5
-                if dist < self.absorb_radius:
-                    orb.absorbing = True
-                    orb.target = self.player
-                    orb.absorb_speed = self.absorb_speed
+        # 파동 시작 시 약간의 카메라 이펙트나 다른 효과를 여기에 추가 가능
+        # 파동은 update()에서 점진적으로 적을 처리함
+        
 
     def update(self, dt, player, enemies, all_sprites, exp_orbs, current_time,towers):
         """타워 로직"""
@@ -211,7 +221,50 @@ class EMP_Tower(pygame.sprite.Sprite):
                 spawn_center=self.rect.center  # 중심을 타워로 변경
             )
             if self.timer <= 0:
-                self.activate(enemies, exp_orbs, all_sprites) 
+                self.activate(enemies, exp_orbs, all_sprites)
+
+        # 파동이 활성화되어 있으면 반경을 늘리고 도달한 적들을 처리
+        if self.wave_active:
+            # dt는 초 단위
+            self.wave_radius += self.wave_speed * dt
+
+            # 새로 파동 범위에 들어온 적들을 처리
+            for enemy in list(enemies):
+                if enemy in self._affected_enemies:
+                    continue
+                dx = enemy.rect.centerx - self.rect.centerx
+                dy = enemy.rect.centery - self.rect.centery
+                dist = math.hypot(dx, dy)
+                if dist <= self.wave_radius:
+                    # 파동에 맞은 적 처리: 경험치 오브 생성 + 제거
+                    orb = ExpOrb(enemy.rect.centerx, enemy.rect.centery, random.randint(1, 7))
+                    exp_orbs.add(orb)
+                    all_sprites.add(orb)
+
+                    # 임시 이펙트(팝)를 추가
+                    self._pops.append((enemy.rect.center, pygame.time.get_ticks(), 30))
+
+                    enemy.kill()
+                    self._affected_enemies.add(enemy)
+
+            # 파동이 최대 반경에 도달하면 종료 처리
+            if self.wave_radius >= self.wave_max_radius:
+                self.wave_active = False
+                self.activated = True  # 완료되면 타워는 ON 상태
+
+                # 파동이 끝난 뒤, 생성된 오브들은 흡수 대상이 되도록 설정
+                for orb in exp_orbs:
+                    dx = orb.rect.centerx - self.rect.centerx
+                    dy = orb.rect.centery - self.rect.centery
+                    dist = math.hypot(dx, dy)
+                    if dist < self.absorb_radius:
+                        orb.absorbing = True
+                        orb.target = self.player
+                        orb.absorb_speed = self.absorb_speed
+
+        # 팝 이펙트 오래된 것 삭제
+        now = pygame.time.get_ticks()
+        self._pops = [p for p in self._pops if now - p[1] < 300] 
 
     def draw(self, screen, camera):
         """타워와 남은 시간 표시"""
@@ -234,6 +287,39 @@ class EMP_Tower(pygame.sprite.Sprite):
             text_rect = text.get_rect(center=(self.rect.centerx - camera.offset_x,
                                               self.rect.top - 20 - camera.offset_y))
             screen.blit(text, text_rect)
+
+        # 파동 시각화: 활성화 도중에는 확장하는 원을 그립니다
+        if self.wave_active:
+            # 반경
+            r = int(self.wave_radius)
+            if r > 0:
+                # 반투명 외곽선 + 내부 희미한 채움
+                # 외곽선
+                pygame.draw.circle(screen, (0, 200, 255), (screen_x, screen_y), r, 4)
+                # 내부 희미한 채움 (원 안에 반투명 색을 칠함)
+                try:
+                    temp = pygame.Surface((r*2+6, r*2+6), pygame.SRCALPHA)
+                    pygame.draw.circle(temp, (0, 200, 255, 30), (r+3, r+3), r)
+                    screen.blit(temp, (screen_x - r - 3, screen_y - r - 3))
+                except Exception:
+                    # 큰 서피스 생성이 실패할 경우 외곽선만 그리기
+                    pass
+
+        # 파동에 맞은 적 팝 이펙트 그리기
+        now = pygame.time.get_ticks()
+        for pos, start_t, max_r in list(self._pops):
+            age = now - start_t
+            t_ratio = min(1.0, age / 300)
+            pr = int(max_r * (0.5 + t_ratio))
+            alpha = int(255 * (1 - t_ratio))
+            tx = pos[0] - camera.offset_x
+            ty = pos[1] - camera.offset_y
+            try:
+                tmp = pygame.Surface((pr*2+6, pr*2+6), pygame.SRCALPHA)
+                pygame.draw.circle(tmp, (255, 220, 100, alpha), (pr+3, pr+3), pr)
+                screen.blit(tmp, (tx - pr - 3, ty - pr - 3))
+            except Exception:
+                pygame.draw.circle(screen, (255, 220, 100), (int(tx), int(ty)), pr, 2)
 
 def spawn_enemies(
         player, enemies, all_sprites,
