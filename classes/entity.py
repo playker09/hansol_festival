@@ -113,7 +113,7 @@ class TankEnemy(Enemy):
     def __init__(self, x, y):
         super().__init__(x, y, max_hp=20, speed=1, damage=7, damage_cooldown=1500, size=45)
         self.original_image = pygame.image.load(os.path.join(ASSET_IMAGE_DIR, "enemy3.png")).convert_alpha()
-        self.original_image = pygame.transform.scale(self.original_image, (100, 100))
+        self.original_image = pygame.transform.scale(self.original_image, (self.original_image.get_width()*0.9, self.original_image.get_height()*0.9))
         self.image = self.original_image.copy()
 
 class ExpOrb(pygame.sprite.Sprite):

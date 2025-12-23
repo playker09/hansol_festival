@@ -29,7 +29,7 @@ FPS = 60
 # --- Optimization / object limits ---
 MAX_ENEMIES = 150
 MAX_EXP_ORBS = 300
-ENEMY_CULL_DISTANCE = 4000                  # 플레이어로부터 너무 멀리 있는 적은 삭제 (px)
+ENEMY_CULL_DISTANCE = 3000                  # 플레이어로부터 너무 멀리 있는 적은 삭제 (px)
 
 pygame.mixer.init()
 game_state = "lobby"  # play, upgrade, game_over, prepare, lobby
