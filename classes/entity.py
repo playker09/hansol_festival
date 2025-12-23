@@ -273,7 +273,7 @@ class EMP_Tower(pygame.sprite.Sprite):
                 spawn_radius=1400,
                 difficulty_scale=False,
                 extra_multiplier=1 + (active_towers*0.7),
-                spawn_center=self.rect.center  # 중심을 타워로 변경
+                spawn_center=None
             )
             if self.timer <= 0:
                 self.activate(enemies, exp_orbs, all_sprites)
@@ -399,7 +399,7 @@ def spawn_enemies(
         if spawn_timer > base_interval:  
             # 난이도 스케일 (시간에 따라 강해짐)
             elapsed_sec = current_time // 1000
-            level_scale = (1 + elapsed_sec // 45) 
+            level_scale = (1 + elapsed_sec // 40) 
 
             # 이번에 스폰할 적 수
             num_to_spawn = round((base_num + level_scale) * extra_multiplier)

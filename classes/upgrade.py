@@ -32,7 +32,6 @@ class Upgrade:
 
     def apply(self, player):
         if self.max_level is not None and self.level >= self.max_level:
-            print(f"[최대 레벨] {self.name} Lv.{self.level}")
             return  # 최대 레벨 도달하면 적용 안함
         
         self.level += 1
@@ -41,8 +40,6 @@ class Upgrade:
         # 추가 효과
         if self.level in self.extra_effects:
             self.extra_effects[self.level](player)
-            print(f"[추가 효과 발동] {self.name} Lv.{self.level}")
-
 
 # ---------------- 공용 업그레이드 ----------------
 COMMON_UPGRADES = [

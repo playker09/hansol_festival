@@ -41,7 +41,7 @@ class Player(pygame.sprite.Sprite):
             "dmr": Weapon("DMR", fire_rate=130, spread=1, mode="single", mag_size=25, reload_time=900, damage=5, pierce_level=3),
             "smg": Weapon("SMG", fire_rate=90, spread=5, mode="auto", reload_time=1200,damage=2, pierce_level=1),
             "rifle": Weapon("Rifle", fire_rate=120, spread=3, mode="auto", reload_time= 1600, damage=3, pierce_level=2),
-            "shotgun": Weapon("Shotgun", fire_rate=700, spread=15, mode="shotgun", pellet_count=7,damage=2)
+            "shotgun": Weapon("Shotgun", fire_rate=700, spread=15, mode="shotgun",  mag_size=10, reload_time= 1300, pellet_count=7,damage=2)
         }
         self.primary_weapon = None
         self.current_weapon = None
@@ -138,7 +138,7 @@ class Player(pygame.sprite.Sprite):
             surface.fill((0,0,0))
 
             # 제목
-            title_surf = font_title.render("Select your weapon", True, (255, 255, 255))
+            title_surf = font_title.render("무기를 선택하세요", True, (255, 255, 255))
             surface.blit(title_surf, (WIDTH//2 - title_surf.get_width()//2, 50))
 
             start_x = (WIDTH - (slot_width + margin) * len(weapons_list) + margin) // 2
