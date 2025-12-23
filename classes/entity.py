@@ -111,7 +111,7 @@ class FastEnemy(Enemy):
 
 class TankEnemy(Enemy):
     def __init__(self, x, y):
-        super().__init__(x, y, max_hp=20, speed=1, damage=7, damage_cooldown=1500, size=45)
+        super().__init__(x, y, max_hp=30, speed=1, damage=7, damage_cooldown=1500, size=45)
         self.original_image = pygame.image.load(os.path.join(ASSET_IMAGE_DIR, "enemy3.png")).convert_alpha()
         self.original_image = pygame.transform.scale(self.original_image, (self.original_image.get_width()*0.9, self.original_image.get_height()*0.9))
         self.image = self.original_image.copy()
@@ -272,7 +272,7 @@ class EMP_Tower(pygame.sprite.Sprite):
                 base_num=7,
                 spawn_radius=1400,
                 difficulty_scale=False,
-                extra_multiplier=1 + active_towers,
+                extra_multiplier=1 + (active_towers*0.7),
                 spawn_center=self.rect.center  # 중심을 타워로 변경
             )
             if self.timer <= 0:
@@ -385,7 +385,7 @@ def spawn_enemies(
         spawn_radius=1400,          # 최대 거리 (기본값)
         enemy_size=32,              # 적 크기
         difficulty_scale=True,      # 시간 경과에 따른 난이도 증가 여부
-        extra_multiplier=1.1,         # 웨이브일 때 배수 (기본은 1)
+        extra_multiplier=1.1,         # 웨이브일 때 배수 (기본은 1.1)
         spawn_center=None,          # (x,y) 중심을 지정하면 그 중심을 기준으로 스폰
         max_enemies=None            
     ):
@@ -399,7 +399,7 @@ def spawn_enemies(
         if spawn_timer > base_interval:  
             # 난이도 스케일 (시간에 따라 강해짐)
             elapsed_sec = current_time // 1000
-            level_scale = (1 + elapsed_sec // 30) 
+            level_scale = (1 + elapsed_sec // 45) 
 
             # 이번에 스폰할 적 수
             num_to_spawn = round((base_num + level_scale) * extra_multiplier)
