@@ -9,6 +9,10 @@ GREEN = (0, 255, 0)
 
 ENEMY_SIZE = 30
 
+# --- Culling / optimization defaults ---
+EXPORB_MAX_AGE_MS = 60_000        # 경험치 오브가 없을 때 자동 삭제되는 시간 (ms)
+EXPORB_CULL_DISTANCE = 3000      # 플레이어로부터 떨어진 경험치 오브 삭제 거리 (px)
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSET_IMAGE_DIR = os.path.join(BASE_DIR, "assets", "image")
 ASSET_SFX_DIR = os.path.join(BASE_DIR, "assets", "sfx")
@@ -122,8 +126,30 @@ class ExpOrb(pygame.sprite.Sprite):
         self.absorbing = False
         self.target = None
         self.absorb_speed = 0
+        # 생성 시각 기록
+        self.created_at = pygame.time.get_ticks()
 
-    def update(self):
+    def update(self, player=None):
+        """흡수 동작을 수행하고, 오브가 너무 오래되었거나 플레이어로부터 멀리 떨어졌으면 삭제한다."""
+        now = pygame.time.get_ticks()
+        age = now - self.created_at
+
+        # 아직 흡수되지 않는 오브일 때: 시간 또는 거리 기반 삭제
+        if not self.absorbing:
+            if age > EXPORB_MAX_AGE_MS:
+                # 오래된 오브는 삭제
+                self.kill()
+                return
+            if player is not None:
+                dx = player.rect.centerx - self.rect.centerx
+                dy = player.rect.centery - self.rect.centery
+                dist = math.hypot(dx, dy)
+                if dist > EXPORB_CULL_DISTANCE:
+                    # 너무 멀리 있는 오브는 삭제
+                    self.kill()
+                    return
+
+        # 흡수 중인 경우 기존 동작 유지
         if self.absorbing and self.target:
             px, py = self.target.rect.center
             ox, oy = self.rect.center   #  중심 좌표 사용
@@ -358,10 +384,10 @@ def spawn_enemies(
         margin=1200,                 # 플레이어 최소 거리 (기본값)
         spawn_radius=1400,          # 최대 거리 (기본값)
         enemy_size=32,              # 적 크기
-        enemy_speed=2,              # 적 속도
         difficulty_scale=True,      # 시간 경과에 따른 난이도 증가 여부
         extra_multiplier=1.1,         # 웨이브일 때 배수 (기본은 1)
-        spawn_center=None            # (x,y) 중심을 지정하면 그 중심을 기준으로 스폰
+        spawn_center=None,          # (x,y) 중심을 지정하면 그 중심을 기준으로 스폰
+        max_enemies=None            
     ):
         """적 스폰 함수. 기본 스폰 및 웨이브 이벤트 모두 지원.
 
@@ -386,6 +412,9 @@ def spawn_enemies(
 
             # 적 스폰
             for _ in range(num_to_spawn):
+                # 만약 max_enemies에 도달하면 더 이상 생성하지 않음
+                if max_enemies is not None and len(enemies) >= max_enemies:
+                    break
                 while True:
                     angle = random.uniform(0, 2*math.pi)
                     distance = random.randint(margin, spawn_radius)

@@ -26,6 +26,11 @@ pygame.display.set_caption("AREA-X")
 clock = pygame.time.Clock()
 FPS = 60
 
+# --- Optimization / object limits ---
+MAX_ENEMIES = 150
+MAX_EXP_ORBS = 300
+ENEMY_CULL_DISTANCE = 4000                  # 플레이어로부터 너무 멀리 있는 적은 삭제 (px)
+
 pygame.mixer.init()
 game_state = "lobby"  # play, upgrade, game_over, prepare, lobby
 # 사운드 파일 경로를 절대 경로로 지정
@@ -118,6 +123,7 @@ def main():
     tutorial_screen(WIN, WIDTH, HEIGHT)
     player.choose_primary_weapon(WIN, WIDTH, HEIGHT)
     game_state = "play"
+    play_start_time = pygame.time.get_ticks()
     
     all_sprites = pygame.sprite.Group()
     enemies = pygame.sprite.Group()
@@ -236,14 +242,23 @@ def main():
 
             activated_towers = sum(1 for t in towers if t.activated)
             if activated_towers >= 3:
-                action = game_success_screen(WIN, WIDTH, HEIGHT)
+                survival_seconds = (current_time - play_start_time) / 1000.0
+                action = game_success_screen(WIN, survival_seconds, activated_towers, WIDTH, HEIGHT)
                 if action == "retry":
                     main()
                 else:
                     pygame.quit()
                     sys.exit()
                 
-            spawn_timer = spawn_enemies(player, enemies, all_sprites, spawn_timer, current_time)
+            spawn_timer = spawn_enemies(player, enemies, all_sprites, spawn_timer, current_time, max_enemies=MAX_ENEMIES)
+
+            # 멀리 있는 오브젝트 정리: 일정 거리 이상, 오래된 적 제거
+            for enemy in list(enemies):
+                dx = enemy.rect.centerx - player.rect.centerx
+                dy = enemy.rect.centery - player.rect.centery
+                dist = math.hypot(dx, dy)
+                if dist > ENEMY_CULL_DISTANCE:
+                    enemy.kill()
             
             # 총알 이동 및 제거
             for bullet in bullets.copy():
@@ -286,7 +301,9 @@ def main():
 
                     if player.hp <= 0:
                         game_state = "game_over"
-                        action = game_over_screen(WIN, player.level, WIDTH, HEIGHT)
+                        survival_seconds = (current_time - play_start_time) / 1000.0
+                        activated_towers = sum(1 for t in towers if t.activated)
+                        action = game_over_screen(WIN, player.level, survival_seconds, activated_towers, WIDTH, HEIGHT)
                         if action == "retry":
                             main()
                         else:
@@ -313,7 +330,15 @@ def main():
             # 지속적으로 흡수 속도 약간 증가시켜 당김 느낌 강화
             if orb.absorbing and orb.target == player:
                 orb.absorb_speed = min(20, orb.absorb_speed + 0.2)
-            orb.update()
+            # 플레이어 정보를 전달하여 거리/시간 기반 자동 삭제가 가능하도록 함
+            orb.update(player)
+
+        # 경험치 오브 개수 제한: 가장 먼 것부터 삭제
+        if len(exp_orbs) > MAX_EXP_ORBS:
+            orbs_sorted = sorted(exp_orbs, key=lambda o: math.hypot(o.rect.centerx - player.rect.centerx, o.rect.centery - player.rect.centery), reverse=True)
+            remove_count = len(exp_orbs) - MAX_EXP_ORBS
+            for o in orbs_sorted[:remove_count]:
+                o.kill()
 
         # 레벨업 큐 확인
         if player.level_up_queue > 0 and game_state != "upgrade":
