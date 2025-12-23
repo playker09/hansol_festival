@@ -9,7 +9,7 @@ def draw_level(surface, font, player):
 def draw_ammo(surface, font, player):
     """현재 무기 탄약 표시"""
     weapon = player.current_weapon
-    text = font.render(f" {weapon.ammo_in_mag}", True, (255, 255, 255))
+    text = font.render(f" {weapon.ammo_in_mag}", True, (255, 255, 0))
     surface.blit(text, (40, 900)) 
 
 def draw_activated(surface, font, towers):
