@@ -1,11 +1,13 @@
 import sys
 import os
+
+# 프로젝트 루트 경로 추가 (scenes 폴더의 부모, 프로젝트 루트)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pygame
 import math
 import random
-
-# 프로젝트 루트 경로 추가
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.poisson import poisson_disc_samples
 
 from classes.player import Player
 from classes.entity import spawn_enemies, EMP_Tower, ExpOrb
@@ -85,27 +87,55 @@ def update_music(game_state):
             current_music_state = None
 
 def generate_tower_positions(num_towers, min_distance_between, min_center_distance):
-    """
+    """Poisson-disc sampling을 사용해 타워 위치를 생성합니다.
+
     - num_towers: 설치할 타워 개수
-    - min_distance_between: 타워끼리 최소 거리
-    - min_center_distance: 맵 중앙에서 최소 거리
+    - min_distance_between: 타워끼리 최소 거리(px)
+    - min_center_distance: 맵 중앙에서 최소 거리(px)
+
+    알고리즘:
+    1) 우선 Poisson-disc로 후보 지점들을 얻는다 (맵 테두리 마진 포함)
+    2) 중앙과 충분히 떨어진 지점만 필터링
+    3) 후보가 부족하면 반경을 줄여 재시도, 그래도 부족하면 기존의 무작위 방식으로 폴백
     """
+    # Poisson-disc를 써서 후보 생성 (마진을 두어 테두리 근처 방지)
+    margin = 100
+    attempts = 0
+    radius = min_distance_between
+    max_attempts = 4
+
+    while attempts < max_attempts:
+        # 내부 영역 크기 (margin 제외)
+        inner_w = max(1, MAP_WIDTH - 2 * margin)
+        inner_h = max(1, MAP_HEIGHT - 2 * margin)
+
+        samples = poisson_disc_samples(inner_w, inner_h, radius)
+        # margin만큼 offset
+        samples = [(int(x + margin), int(y + margin)) for x, y in samples]
+
+        center_x, center_y = MAP_WIDTH // 2, MAP_HEIGHT // 2
+        filtered = [(x, y) for x, y in samples if math.hypot(x - center_x, y - center_y) >= min_center_distance]
+
+        if len(filtered) >= num_towers:
+            return random.sample(filtered, num_towers)
+
+        # 부족하면 반경을 줄여 더 촘촘한 샘플 생성 시도
+        radius = max(10, radius * 0.7)
+        attempts += 1
+
+    # 폴백: 기존 방식
     positions = []
     center_x, center_y = MAP_WIDTH // 2, MAP_HEIGHT // 2
-    
     while len(positions) < num_towers:
         x = random.randint(100, MAP_WIDTH - 100)
         y = random.randint(100, MAP_HEIGHT - 100)
 
-        # 타워끼리 최소 거리 확인
         too_close_to_others = any(math.hypot(x - px, y - py) < min_distance_between for px, py in positions)
-
-        # 중앙에서 충분히 떨어졌는지 확인
         too_close_to_center = math.hypot(x - center_x, y - center_y) < min_center_distance
 
         if not too_close_to_others and not too_close_to_center:
             positions.append((x, y))
-    
+
     return positions
 
 def main():
