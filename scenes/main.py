@@ -165,7 +165,7 @@ def main():
         min_distance_between=1000,
         min_center_distance=800   # 중앙에서 최소 800px 떨어짐
     )
-    towers = pygame.sprite.Group([EMP_Tower(x, y, player) for x, y in tower_positions])
+    towers = pygame.sprite.Group([EMP_Tower(x, y, player, game_start_time=play_start_time) for x, y in tower_positions])
     all_sprites.add(towers)
     all_sprites.add(player)
 
@@ -280,7 +280,7 @@ def main():
                     pygame.quit()
                     sys.exit()
                 
-            spawn_timer = spawn_enemies(player, enemies, all_sprites, spawn_timer, current_time, max_enemies=MAX_ENEMIES)
+            spawn_timer = spawn_enemies(player, enemies, all_sprites, spawn_timer, current_time, max_enemies=MAX_ENEMIES, game_start_time=play_start_time)
 
             # 멀리 있는 오브젝트 정리: 일정 거리 이상, 오래된 적 제거
             for enemy in list(enemies):

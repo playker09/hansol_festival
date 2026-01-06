@@ -176,7 +176,7 @@ class ExpOrb(pygame.sprite.Sprite):
         surface.blit(self.image, camera.apply(self.rect))
 
 class EMP_Tower(pygame.sprite.Sprite):
-    def __init__(self, x, y,player = None ,survive_time=30):
+    def __init__(self, x, y, player=None, survive_time=30, game_start_time=None):
         super().__init__()
         self.original_image = pygame.image.load(os.path.join(ASSET_IMAGE_DIR, "tower.png")).convert_alpha()
         self.original_image = pygame.transform.scale(self.original_image, (self.original_image.get_width()*1.7, self.original_image.get_height()*1.7))
@@ -189,6 +189,7 @@ class EMP_Tower(pygame.sprite.Sprite):
         self.timer = 0           # 남은 시간
         self.font = pygame.font.SysFont(None, 32)
         self.player = player
+        self.game_start_time = game_start_time
         # 흡수 반경 (px) 및 흡수 속도 — 출입 불가 링 반경과 동일하게 사용
         self.absorb_radius = 900
         self.absorb_speed = 15
@@ -273,7 +274,8 @@ class EMP_Tower(pygame.sprite.Sprite):
                 spawn_radius=1400,
                 difficulty_scale=False,
                 extra_multiplier=1 + (active_towers*0.7),
-                spawn_center=None
+                spawn_center=None,
+                game_start_time=self.game_start_time
             )
             if self.timer <= 0:
                 self.activate(enemies, exp_orbs, all_sprites)
@@ -386,7 +388,8 @@ def spawn_enemies(
         enemy_size=32,              # 적 크기
         difficulty_scale=True,      # 시간 경과에 따른 난이도 증가 여부
         extra_multiplier=1.1,         # 웨이브일 때 배수 (기본은 1.1)
-        spawn_center=None,          # (x,y) 중심을 지정하면 그 중심을 기준으로 스폰
+        spawn_center=None,          # (x,y) 중심을 지정하면 해당 좌표를 기준으로 스폰
+        game_start_time=None,
         max_enemies=None            
     ):
         """적 스폰 함수. 기본 스폰 및 웨이브 이벤트 모두 지원.
@@ -398,9 +401,11 @@ def spawn_enemies(
         spawn_timer += 1
         if spawn_timer > base_interval:  
             # 난이도 스케일 (시간에 따라 강해짐)
-            elapsed_sec = current_time // 1000
+            if game_start_time is None:
+                elapsed_sec = current_time // 1000
+            else:
+                elapsed_sec = max(0, (current_time - game_start_time) // 1000)
             level_scale = (1 + elapsed_sec // 40) 
-
             # 이번에 스폰할 적 수
             num_to_spawn = round((base_num + level_scale) * extra_multiplier)
 
